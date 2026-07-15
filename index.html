@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>모닝볼 · 매일 아침 야구 브리핑</title>
+<meta name="description" content="LG 트윈스 · SSG 랜더스 팬을 위한 데일리 브리핑 — 오늘의 경기, 진행 가능성, 라인업 지표, KBO 순위, 뉴스">
+<meta name="theme-color" content="#0E1613">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   MORNING BALL — 야간 전광판 디자인 토큰
+   night   : 경기장 밤하늘   #0E1613
+   field   : 외야 잔디       #17342A
+   chalk   : 파울라인 석회   #F3EEE2
+   sand    : 내야 흙         #C9A46B
+   team    : 팀 전환 액센트 (LG 자주 / SSG 레드)
+   ============================================================ */
+:root{
+  --night:#0E1613;
+  --night-2:#13201B;
+  --field:#17342A;
+  --field-2:#1E4234;
+  --chalk:#F3EEE2;
+  --chalk-dim:rgba(243,238,226,.62);
+  --chalk-faint:rgba(243,238,226,.34);
+  --sand:#C9A46B;
+  --line:rgba(243,238,226,.14);
+  --good:#7FD1A7;
+  --warn:#E8C067;
+  --bad:#E07A6B;
+  --radius:14px;
+  --disp:'Black Han Sans',sans-serif;
+  --body:'Noto Sans KR',sans-serif;
+  --num:'Oswald','Noto Sans KR',sans-serif;
+}
+body[data-team="lg"]{
+  --team:#D0166B;          /* LG 트윈스 자주 */
+  --team-soft:rgba(208,22,107,.16);
+  --team-line:rgba(208,22,107,.45);
+  --team-glow:rgba(208,22,107,.30);
+  --opp:#CE0E2D;
+}
+body[data-team="ssg"]{
+  --team:#E3252F;          /* SSG 랜더스 레드 */
+  --team-soft:rgba(227,37,47,.15);
+  --team-line:rgba(227,37,47,.45);
+  --team-glow:rgba(227,37,47,.28);
+  --opp:#D0166B;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+html,body{overflow-x:clip}
+svg{max-width:100%}
+body{
+  font-family:var(--body);
+  background:
+    radial-gradient(1100px 480px at 50% -180px, var(--team-glow), transparent 62%),
+    repeating-linear-gradient(90deg, var(--night) 0 88px, var(--night-2) 88px 176px);
+  color:var(--chalk);
+  min-height:100vh;
+  transition:background .6s ease;
+  line-height:1.6;
+}
+::selection{background:var(--team);color:#fff}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px 90px}
+
+/* ---------- 헤더 ---------- */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:16px;flex-wrap:wrap;padding:26px 0 8px;
+}
+.brand{display:flex;align-items:baseline;gap:12px}
+.brand h1{
+  font-family:var(--disp);font-size:clamp(28px,4.5vw,40px);
+  letter-spacing:.5px;font-weight:400;line-height:1.1;
+}
+.brand h1 em{font-style:normal;color:var(--team);transition:color .4s}
+.brand .en{
+  font-family:var(--num);font-weight:600;font-size:12px;
+  letter-spacing:4px;color:var(--chalk-faint);text-transform:uppercase;
+}
+.date-chip{
+  font-family:var(--num);font-weight:600;font-size:13px;letter-spacing:1.5px;
+  border:1px solid var(--line);border-radius:999px;padding:7px 16px;
+  color:var(--chalk-dim);background:rgba(0,0,0,.25);
+}
+
+/* ---------- 팀 토글 ---------- */
+.team-toggle{
+  display:flex;gap:8px;background:rgba(0,0,0,.3);
+  border:1px solid var(--line);border-radius:999px;padding:5px;margin:14px 0 10px;
+  width:max-content;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+}
+.team-toggle::-webkit-scrollbar{display:none}
+.team-toggle button{min-height:40px;white-space:nowrap}
+.tab-btn,.nf-btn{min-height:40px}
+.data-status{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 24px}
+.ds-chip{
+  font-family:var(--num);font-weight:500;font-size:11px;letter-spacing:.8px;
+  border:1px solid var(--line);border-radius:999px;padding:5px 13px;
+  background:rgba(0,0,0,.22);color:var(--chalk-faint);
+}
+.ds-chip.ok{color:var(--good);border-color:rgba(127,209,167,.35)}
+.ds-chip.wait{color:var(--warn);border-color:rgba(232,192,103,.32)}
+.team-toggle button{
+  font-family:var(--body);font-weight:700;font-size:14px;
+  color:var(--chalk-dim);background:transparent;border:none;cursor:pointer;
+  padding:9px 22px;border-radius:999px;letter-spacing:.3px;
+  transition:all .25s ease;
+}
+.team-toggle button:hover{color:var(--chalk)}
+.team-toggle button.on{background:var(--team);color:#fff;box-shadow:0 2px 14px var(--team-glow)}
+.team-toggle button:focus-visible,
+.tab-btn:focus-visible, .p-row:focus-visible{
+  outline:2px solid var(--sand);outline-offset:2px;
+}
+
+/* ---------- 섹션 공통 ---------- */
+section{margin-top:52px}
+.sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:18px;flex-wrap:wrap}
+.sec-head h2{
+  font-family:var(--disp);font-weight:400;font-size:clamp(21px,3vw,27px);letter-spacing:.5px;
+}
+.sec-head .tag{
+  font-family:var(--num);font-weight:600;font-size:11px;letter-spacing:3px;
+  color:var(--team);text-transform:uppercase;
+  border-bottom:2px solid var(--team-line);padding-bottom:2px;
+}
+.sec-head .hint{font-size:12.5px;color:var(--chalk-faint);margin-left:auto}
+.card{
+  background:linear-gradient(160deg, rgba(255,255,255,.045), rgba(255,255,255,.012));
+  border:1px solid var(--line);border-radius:var(--radius);
+  backdrop-filter:blur(3px);
+}
+
+/* ---------- 전광판 히어로 ---------- */
+.scoreboard{
+  position:relative;overflow:hidden;
+  border:1px solid var(--team-line);border-radius:18px;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,.5), rgba(0,0,0,.2)),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 2px, transparent 2px 5px),
+    var(--field);
+  box-shadow:0 18px 60px rgba(0,0,0,.45), 0 0 0 6px rgba(0,0,0,.28);
+  padding:26px 28px 24px;
+}
+.scoreboard::before{ /* 상단 전광판 조명 바 */
+  content:"";position:absolute;inset:0 0 auto 0;height:4px;
+  background:linear-gradient(90deg, transparent, var(--team), transparent);
+  opacity:.9;
+}
+.sb-top{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+  font-family:var(--num);font-weight:600;font-size:12px;letter-spacing:2.5px;
+  color:var(--chalk-faint);text-transform:uppercase;margin-bottom:18px;
+}
+.sb-top .live-dot{display:inline-flex;align-items:center;gap:7px;color:var(--sand)}
+.sb-top .live-dot i{
+  width:7px;height:7px;border-radius:50%;background:var(--sand);
+  animation:blink 1.8s infinite;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.sb-main{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:center}
+.sb-team{text-align:center}
+.sb-team .logo{
+  width:76px;height:76px;border-radius:50%;margin:0 auto 10px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--disp);font-size:26px;color:#fff;
+  border:2px solid rgba(255,255,255,.25);
+  box-shadow:inset 0 -14px 26px rgba(0,0,0,.35), 0 6px 22px rgba(0,0,0,.4);
+}
+.sb-team.home .logo{background:radial-gradient(circle at 32% 28%, color-mix(in srgb,var(--team) 80%, #fff 20%), var(--team))}
+.sb-team.away .logo{background:radial-gradient(circle at 32% 28%, #566, #2E3A38)}
+.sb-team .nm{font-weight:900;font-size:clamp(16px,2.4vw,21px);letter-spacing:.5px}
+.sb-team .rec{font-family:var(--num);font-weight:500;font-size:12.5px;letter-spacing:1.5px;color:var(--chalk-dim);margin-top:2px}
+.sb-vs{text-align:center}
+.sb-vs .t{
+  font-family:var(--num);font-weight:700;font-size:clamp(30px,5vw,44px);
+  letter-spacing:2px;line-height:1;color:var(--chalk);
+  text-shadow:0 0 24px var(--team-glow);
+}
+.sb-vs .sub{font-family:var(--num);font-weight:500;font-size:12px;letter-spacing:2px;color:var(--chalk-faint);margin-top:6px}
+.sb-starters{
+  margin-top:20px;padding-top:16px;border-top:1px dashed var(--line);
+  display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13.5px;
+}
+.sb-starters b{color:var(--sand);font-weight:700}
+.sb-starters span{color:var(--chalk-dim)}
+</style>
+</head>
+<body data-team="lg">
+<div class="wrap">
+
+<header>
+  <div class="brand">
+    <h1>모닝<em>볼</em></h1>
+    <span class="en">Morning Ball · Daily Briefing</span>
+  </div>
+  <div class="date-chip" id="todayChip"></div>
+</header>
+
+<div class="team-toggle" role="tablist" aria-label="응원 팀 선택">
+  <button id="btn-lg" class="on" onclick="setTeam('lg')">LG 트윈스</button>
+  <button id="btn-ssg" onclick="setTeam('ssg')">SSG 랜더스</button>
+  <button id="btn-rank" onclick="setTeam('rank')">KBO 순위</button>
+  <button id="btn-news" onclick="setTeam('news')">뉴스</button>
+</div>
+<div class="data-status" id="dataStatus" aria-live="polite"></div>
+
+<!-- ═══════════ 1. 오늘의 경기 전광판 ═══════════ -->
+<section id="sec-game" style="margin-top:0">
+  <div class="scoreboard">
+    <div class="sb-top">
+      <span class="live-dot"><i></i><span id="sbStatus">TODAY'S GAME</span></span>
+      <span id="sbMeta"></span>
+    </div>
+    <div class="sb-main">
+      <div class="sb-team home">
+        <div class="logo" id="homeLogo">LG</div>
+        <div class="nm" id="homeName">LG 트윈스</div>
+        <div class="rec" id="homeRec"></div>
+      </div>
+      <div class="sb-vs">
+        <div class="t" id="gameTime">18:30</div>
+        <div class="sub" id="gameVenue">잠실야구장</div>
+      </div>
+      <div class="sb-team away">
+        <div class="logo" id="awayLogo">두</div>
+        <div class="nm" id="awayName"></div>
+        <div class="rec" id="awayRec"></div>
+      </div>
+    </div>
+    <div class="sb-starters">
+      <div>선발 <b id="homeSP"></b> <span id="homeSPline"></span></div>
+      <div style="text-align:right">선발 <b id="awaySP"></b> <span id="awaySPline"></span></div>
+    </div>
+  </div>
+
+  <!-- 진행 가능성 패널 -->
+  <div class="playable card">
+    <div class="gauge-box">
+      <svg viewBox="0 0 200 120" class="gauge" aria-hidden="true">
+        <path d="M20 110 A 90 90 0 0 1 180 110" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="16" stroke-linecap="round"/>
+        <path id="gaugeArc" d="M20 110 A 90 90 0 0 1 180 110" fill="none" stroke="var(--good)" stroke-width="16" stroke-linecap="round" stroke-dasharray="283" stroke-dashoffset="283" style="transition:stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1), stroke .5s"/>
+        <text id="gaugeNum" x="100" y="92" text-anchor="middle" font-family="Oswald" font-weight="700" font-size="38" fill="var(--chalk)">0%</text>
+      </svg>
+      <div class="gauge-label">오늘 경기 진행 가능성</div>
+      <div class="gauge-verdict" id="gaugeVerdict"></div>
+    </div>
+    <div class="risk-list" id="riskList"></div>
+  </div>
+</section>
+
+<!-- ═══════════ 2. 맞대결 리포트 ═══════════ -->
+<section id="sec-h2h">
+  <div class="sec-head">
+    <span class="tag">Matchup</span><h2>맞대결 리포트</h2>
+    <span class="hint">시즌 팀 지표 · 가운데로 갈수록 접전</span>
+  </div>
+  <div class="card h2h-card">
+    <div class="h2h-record">
+      <div class="hr-side" id="h2hLeft"></div>
+      <div class="hr-mid">
+        <div class="hr-score" id="h2hScore">0 - 0</div>
+        <div class="hr-sub">시즌 상대전적 <span id="h2hDraw"></span></div>
+        <div class="hr-recent" id="h2hRecent"></div>
+      </div>
+      <div class="hr-side" id="h2hRight"></div>
+    </div>
+    <div class="vs-bars" id="vsBars"></div>
+    <div class="h2h-notes" id="h2hNotes"></div>
+  </div>
+</section>
+
+<!-- ═══════════ 3. 오늘의 라인업 ═══════════ -->
+<section id="sec-lineup">
+  <div class="sec-head">
+    <span class="tag">Lineup</span><h2>오늘의 라인업</h2>
+    <span class="hint">선수를 누르면 세부 지표가 펼쳐져요</span>
+  </div>
+  <div class="tabs" role="tablist" aria-label="타자 투수 전환">
+    <button class="tab-btn on" id="tab-bat" onclick="setTab('bat')">타자 라인업</button>
+    <button class="tab-btn" id="tab-pit" onclick="setTab('pit')">투수진</button>
+  </div>
+  <div id="lineupArea"></div>
+</section>
+
+<!-- ═══════════ 4. 오늘의 한 스푼 ═══════════ -->
+<section id="sec-fun">
+  <div class="sec-head">
+    <span class="tag">One Spoon</span><h2>오늘의 한 스푼</h2>
+    <span class="hint">출근길에 읽는 야구 한 조각</span>
+  </div>
+  <div class="fun-grid" id="funGrid"></div>
+</section>
+
+<!-- ═══════════ 5. KBO 순위 (탭 전환 뷰) ═══════════ -->
+<section id="sec-rank" hidden style="margin-top:0">
+  <div class="sec-head">
+    <span class="tag">Standings</span><h2>KBO 리그 순위</h2>
+    <span class="hint">오늘 경기 시작 전 기준 · 추이 = 최근 8주 승률 흐름</span>
+  </div>
+  <div class="card rank-card">
+    <div class="rank-table" id="rankTable"></div>
+  </div>
+  <div class="rank-legend">
+    <span><i class="dot-my"></i>내 팀 (LG · SSG)</span>
+    <span><i class="dot-w"></i>최근 10경기 승</span>
+    <span><i class="dot-l"></i>패</span>
+  </div>
+</section>
+
+<!-- ═══════════ 6. 두 팀 주요 뉴스 (탭 전환 뷰) ═══════════ -->
+<section id="sec-news" hidden style="margin-top:0">
+  <div class="sec-head">
+    <span class="tag">Press Box</span><h2>두 팀 주요 뉴스</h2>
+    <span class="hint">구단명 키워드 · 경기 전날 ~ 당일 업데이트분</span>
+  </div>
+  <div class="news-filter" id="newsFilter">
+    <button class="nf-btn on" data-f="all" onclick="setNewsFilter('all')">전체</button>
+    <button class="nf-btn" data-f="lg" onclick="setNewsFilter('lg')">LG 트윈스</button>
+    <button class="nf-btn" data-f="ssg" onclick="setNewsFilter('ssg')">SSG 랜더스</button>
+  </div>
+  <div class="news-list" id="newsList"></div>
+  <div class="news-foot">헤드라인을 누르면 해당 언론사 기사 페이지가 새 탭으로 열립니다. 릴리즈 버전에서는 뉴스 검색 API가 매일 아침 자동으로 이 목록을 갱신합니다.</div>
+</section>
+
+<footer>
+  <div class="foot-badge">SAMPLE DATA</div>
+  <p>수치는 <b>디자인 검토용 샘플 데이터</b>입니다. 배포 후에는 하루 2회 배치(당일 0시 선발 · 경기 90분 전 라인업)가 검증을 통과한 데이터만 반영하며, 검증 실패 시 마지막 정상 데이터를 유지합니다.</p>
+  <p class="foot-dim">Morning Ball — 매일 아침, 오늘의 야구를 가장 먼저.</p>
+</footer>
+
+</div>
+<style>
+/* ---------- 진행 가능성 패널 ---------- */
+.playable{
+  margin-top:16px;display:grid;grid-template-columns:250px 1fr;gap:10px;
+  padding:22px 24px;align-items:center;
+}
+.gauge-box{text-align:center}
+.gauge{width:200px;max-width:100%}
+.gauge-label{font-size:12.5px;color:var(--chalk-dim);margin-top:2px}
+.gauge-verdict{font-family:var(--disp);font-size:19px;margin-top:4px;color:var(--good)}
+.risk-list{display:grid;gap:10px}
+.risk{
+  display:grid;grid-template-columns:34px 1fr auto;gap:12px;align-items:center;
+  background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:10px;
+  padding:11px 14px;
+}
+.risk .ico{font-size:19px;text-align:center}
+.risk .t{font-size:13.5px;font-weight:700}
+.risk .d{font-size:12px;color:var(--chalk-dim);font-weight:400}
+.risk .lv{
+  font-family:var(--num);font-weight:600;font-size:12px;letter-spacing:1px;
+  padding:4px 12px;border-radius:999px;white-space:nowrap;
+}
+.lv-good{background:rgba(127,209,167,.14);color:var(--good);border:1px solid rgba(127,209,167,.35)}
+.lv-warn{background:rgba(232,192,103,.13);color:var(--warn);border:1px solid rgba(232,192,103,.35)}
+.lv-bad{background:rgba(224,122,107,.13);color:var(--bad);border:1px solid rgba(224,122,107,.35)}
+
+/* ---------- 맞대결 ---------- */
+.h2h-card{padding:26px 28px}
+.h2h-record{
+  display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:center;
+  padding-bottom:20px;border-bottom:1px dashed var(--line);margin-bottom:22px;
+}
+.hr-side{text-align:center;font-weight:900;font-size:15.5px}
+.hr-side small{display:block;font-family:var(--num);font-weight:500;font-size:11.5px;letter-spacing:1.5px;color:var(--chalk-faint);margin-top:2px}
+.hr-mid{text-align:center}
+.hr-score{font-family:var(--num);font-weight:700;font-size:clamp(30px,5vw,42px);letter-spacing:3px;text-shadow:0 0 22px var(--team-glow)}
+.hr-sub{font-size:12px;color:var(--chalk-dim)}
+.hr-recent{margin-top:8px;display:flex;gap:5px;justify-content:center}
+.hr-recent i{
+  width:20px;height:20px;border-radius:5px;font-style:normal;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-family:var(--num);font-weight:600;font-size:11px;
+}
+.hr-recent i.w{background:var(--team);color:#fff}
+.hr-recent i.l{background:rgba(255,255,255,.1);color:var(--chalk-faint)}
+.vs-bars{display:grid;gap:13px}
+.vsb{display:grid;grid-template-columns:64px 1fr 64px;gap:12px;align-items:center}
+.vsb .v{font-family:var(--num);font-weight:600;font-size:15px}
+.vsb .v.r{text-align:right}
+.vsb .v.win{color:var(--sand)}
+.vsb .track{position:relative;height:26px}
+.vsb .lab{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:11.5px;color:var(--chalk-dim);letter-spacing:1px;z-index:2;
+  text-shadow:0 1px 3px rgba(0,0,0,.8);
+}
+.vsb .bar{position:absolute;top:6px;bottom:6px;border-radius:99px;transition:width 1s cubic-bezier(.2,.8,.2,1)}
+.vsb .bar.me{right:50%;background:linear-gradient(270deg,var(--team),color-mix(in srgb,var(--team) 55%,transparent));border-radius:99px 0 0 99px}
+.vsb .bar.op{left:50%;background:linear-gradient(90deg,rgba(255,255,255,.35),rgba(255,255,255,.12));border-radius:0 99px 99px 0}
+.vsb .mid-line{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line)}
+.h2h-notes{margin-top:22px;display:flex;gap:10px;flex-wrap:wrap}
+.note-chip{
+  font-size:12.5px;background:var(--team-soft);border:1px solid var(--team-line);
+  border-radius:999px;padding:6px 14px;
+}
+
+/* ---------- 라인업 ---------- */
+.tabs{display:flex;gap:8px;margin-bottom:14px}
+.tab-btn{
+  font-family:var(--body);font-weight:700;font-size:13.5px;cursor:pointer;
+  background:transparent;border:1px solid var(--line);color:var(--chalk-dim);
+  border-radius:10px;padding:9px 18px;transition:all .2s;
+}
+.tab-btn.on{background:var(--team-soft);border-color:var(--team-line);color:var(--chalk)}
+.p-list{display:grid;gap:9px}
+.p-row{
+  cursor:pointer;border:1px solid var(--line);border-radius:12px;overflow:hidden;
+  background:linear-gradient(160deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+  transition:border-color .2s;
+}
+.p-row:hover{border-color:var(--team-line)}
+.p-head{
+  display:grid;grid-template-columns:40px 1fr 200px 20px;gap:12px;align-items:center;
+  padding:13px 16px;
+}
+.p-ord{
+  font-family:var(--num);font-weight:700;font-size:17px;color:var(--team);
+  text-align:center;
+}
+.p-name{font-weight:700;font-size:15px}
+.p-name small{font-weight:500;font-size:11.5px;color:var(--chalk-faint);margin-left:8px}
+.p-key{display:flex;gap:14px;justify-content:flex-end}
+.p-key div{text-align:right}
+.p-key .kv{font-family:var(--num);font-weight:600;font-size:15px}
+.p-key .kl{font-size:10px;letter-spacing:1px;color:var(--chalk-faint)}
+.p-caret{color:var(--chalk-faint);font-size:11px;transition:transform .25s}
+.p-row.open .p-caret{transform:rotate(180deg)}
+.p-detail{
+  max-height:0;overflow:hidden;transition:max-height .45s ease;
+  border-top:0 solid transparent;
+}
+.p-row.open .p-detail{max-height:760px;border-top:1px dashed var(--line)}
+.p-detail-in{
+  padding:18px;display:grid;grid-template-columns:170px 1fr;gap:20px;align-items:start;
+}
+.stat-col{width:100%;min-width:0}
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
+.stat-cell{
+  background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:9px;
+  padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;
+}
+.stat-cell .v{font-family:var(--num);font-weight:600;font-size:14.5px;white-space:nowrap}
+.stat-cell .l{font-size:11px;letter-spacing:.5px;color:var(--chalk-faint);cursor:help;border-bottom:1px dotted rgba(243,238,226,.25)}
+.stat-cell.hot .v{color:var(--sand)}
+.stat-gt{
+  font-family:var(--num);font-weight:600;font-size:10px;letter-spacing:2.5px;
+  color:var(--chalk-faint);text-transform:uppercase;margin:14px 0 7px;
+  display:flex;align-items:center;gap:8px;
+}
+.stat-gt:first-child{margin-top:0}
+.stat-gt::after{content:"";flex:1;height:1px;background:var(--line)}
+.stat-gt .adv-badge{
+  font-size:9px;letter-spacing:1.5px;color:var(--sand);
+  border:1px solid rgba(201,164,107,.4);border-radius:99px;padding:2px 8px;
+}
+.p-note{grid-column:1/-1;font-size:12.5px;color:var(--chalk-dim);background:var(--team-soft);border-radius:8px;padding:9px 13px}
+.radar{width:170px;height:170px}
+.pit-role{
+  font-family:var(--num);font-weight:600;font-size:10.5px;letter-spacing:2px;
+  color:var(--sand);text-transform:uppercase;margin:18px 0 8px;
+}
+.pit-role:first-child{margin-top:0}
+.pitch-mix{display:flex;height:14px;border-radius:99px;overflow:hidden;margin:6px 0 4px}
+.pitch-mix span{height:100%}
+.pitch-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--chalk-dim)}
+.pitch-legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px}
+
+/* ---------- 오늘의 한 스푼 ---------- */
+.fun-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.fun-card{padding:20px 22px}
+.fun-card h3{font-family:var(--disp);font-weight:400;font-size:16.5px;margin-bottom:12px;display:flex;align-items:center;gap:9px}
+.fun-card h3 .em{font-size:19px}
+.winprob-bar{display:flex;height:30px;border-radius:9px;overflow:hidden;margin:8px 0 6px;font-family:var(--num)}
+.winprob-bar div{display:flex;align-items:center;padding:0 12px;font-weight:600;font-size:14px;color:#fff;transition:width 1s cubic-bezier(.2,.8,.2,1)}
+.winprob-bar .me{background:var(--team)}
+.winprob-bar .op{background:rgba(255,255,255,.16);justify-content:flex-end;color:var(--chalk-dim)}
+.fun-dim{font-size:12.5px;color:var(--chalk-dim)}
+.km-face{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+.km-face b{font-size:15px}
+.km-face .vs{font-family:var(--num);font-weight:700;color:var(--team);font-size:13px;letter-spacing:2px}
+.km-stats{display:flex;gap:8px;flex-wrap:wrap}
+.km-chip{font-family:var(--num);font-weight:500;font-size:12.5px;background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:8px;padding:5px 11px}
+.km-chip b{color:var(--sand);font-weight:600}
+.streak-num{font-family:var(--num);font-weight:700;font-size:40px;color:var(--team);line-height:1.05;text-shadow:0 0 20px var(--team-glow)}
+.tip-list{list-style:none;display:grid;gap:9px;font-size:13px}
+.tip-list li{display:flex;gap:9px}
+.tip-list li::before{content:"◆";color:var(--team);font-size:9px;margin-top:5px}
+.trivia{font-size:13.5px;line-height:1.75}
+.trivia b{color:var(--sand)}
+
+/* ---------- 상대 기록 괄호 병기 ---------- */
+.p-key .kv em, .stat-cell .v em{
+  font-style:normal;font-size:.68em;color:var(--sand);margin-left:4px;font-weight:500;
+  letter-spacing:0;
+}
+.vs-legend{
+  font-size:12px;color:var(--chalk-dim);margin:2px 0 12px;
+  display:flex;align-items:center;gap:7px;
+}
+.vs-legend b{color:var(--sand);font-weight:600}
+
+/* ---------- KBO 순위표 ---------- */
+.rank-card{padding:10px 6px}
+.rank-table{width:100%}
+.rk-row{
+  display:grid;
+  grid-template-columns:44px minmax(96px,1.2fr) 86px 58px 52px minmax(96px,1fr) 96px;
+  gap:10px;align-items:center;padding:12px 16px;border-radius:10px;
+}
+.rk-row.head{
+  font-family:var(--num);font-weight:600;font-size:10.5px;letter-spacing:2px;
+  color:var(--chalk-faint);text-transform:uppercase;padding-top:8px;padding-bottom:8px;
+}
+.rk-row:not(.head){border-top:1px dashed var(--line)}
+.rk-row.mine{
+  background:var(--my-soft, var(--team-soft));
+  border-top:1px solid transparent;
+  box-shadow:inset 3px 0 0 var(--my, var(--team));
+}
+.rk-no{font-family:var(--num);font-weight:700;font-size:17px;text-align:center;color:var(--chalk-dim)}
+.rk-row.mine .rk-no{color:var(--my, var(--team))}
+.rk-team{font-weight:700;font-size:14px}
+.rk-team small{display:block;font-weight:400;font-size:11px;color:var(--chalk-faint)}
+.rk-rec,.rk-pct,.rk-gb{font-family:var(--num);font-weight:500;font-size:13.5px;color:var(--chalk-dim)}
+.rk-pct{color:var(--chalk)}
+.rk-ten{display:flex;gap:3px;flex-wrap:wrap}
+.rk-ten i{
+  width:13px;height:13px;border-radius:3px;font-style:normal;
+}
+.rk-ten i.w{background:var(--my, var(--team));opacity:.92}
+.rk-row:not(.mine) .rk-ten i.w{background:rgba(243,238,226,.55)}
+.rk-ten i.l{background:rgba(255,255,255,.10)}
+.rk-ten i.d{background:rgba(232,192,103,.5)}
+.rk-spark{width:96px;height:30px}
+.rank-legend{
+  display:flex;gap:18px;justify-content:flex-end;margin-top:10px;
+  font-size:11.5px;color:var(--chalk-faint);
+}
+.rank-legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.rank-legend .dot-my{background:var(--team)}
+.rank-legend .dot-w{background:rgba(243,238,226,.55)}
+.rank-legend .dot-l{background:rgba(255,255,255,.12)}
+@media (max-width:760px){
+  .rk-row{grid-template-columns:32px 1fr 70px 50px;row-gap:8px}
+  .rk-row .rk-ten{grid-column:2/4}
+  .rk-row .rk-spark{grid-column:4/5;justify-self:end}
+  .rk-row.head .rk-ten, .rk-row.head .rk-spark, .rk-row .rk-gb{display:none}
+}
+
+/* ---------- 뉴스 ---------- */
+.news-filter{display:flex;gap:8px;margin-bottom:14px}
+.nf-btn{
+  font-family:var(--body);font-weight:700;font-size:13px;cursor:pointer;
+  background:transparent;border:1px solid var(--line);color:var(--chalk-dim);
+  border-radius:999px;padding:7px 16px;transition:all .2s;
+}
+.nf-btn.on{background:var(--team-soft);border-color:var(--team-line);color:var(--chalk)}
+.nf-btn:focus-visible{outline:2px solid var(--sand);outline-offset:2px}
+.news-list{display:grid;gap:9px}
+.news-item{
+  display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;
+  border:1px solid var(--line);border-radius:12px;padding:14px 17px;
+  background:linear-gradient(160deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+  transition:border-color .2s, transform .15s;
+  border-left:3px solid var(--nteam,var(--line));
+}
+.news-item:hover{border-color:var(--team-line);transform:translateX(3px)}
+.news-side{display:flex;flex-direction:column;gap:4px;min-width:88px}
+.news-team{
+  font-family:var(--num);font-weight:600;font-size:10px;letter-spacing:2px;
+  color:var(--nteam);text-transform:uppercase;
+}
+.news-press{font-size:11.5px;color:var(--chalk-dim);font-weight:700}
+.news-time{font-family:var(--num);font-weight:500;font-size:10.5px;letter-spacing:1px;color:var(--chalk-faint)}
+.news-item a{
+  color:var(--chalk);text-decoration:none;font-weight:700;font-size:14.5px;line-height:1.5;
+}
+.news-item a:hover{color:var(--sand);text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px}
+.news-item a:focus-visible{outline:2px solid var(--sand);outline-offset:2px;border-radius:4px}
+.news-arrow{color:var(--chalk-faint);font-size:15px}
+.news-item.official{background:linear-gradient(160deg, var(--team-soft), rgba(255,255,255,.01))}
+.news-badge{
+  display:inline-block;font-size:9.5px;letter-spacing:1.5px;font-family:var(--num);font-weight:600;
+  border:1px solid rgba(201,164,107,.45);color:var(--sand);border-radius:99px;padding:1px 8px;margin-left:8px;
+  vertical-align:2px;
+}
+.news-foot{font-size:12px;color:var(--chalk-faint);margin-top:14px;text-align:center}
+@media (max-width:760px){
+  .news-item{grid-template-columns:1fr auto}
+  .news-side{flex-direction:row;align-items:center;gap:8px;grid-column:1/2}
+  .news-item a{grid-column:1/2}
+  .news-arrow{grid-row:1/3;align-self:center}
+}
+
+footer{margin-top:70px;text-align:center;border-top:1px dashed var(--line);padding-top:26px}
+.foot-badge{
+  display:inline-block;font-family:var(--num);font-weight:600;font-size:10.5px;letter-spacing:3px;
+  border:1px solid var(--warn);color:var(--warn);border-radius:999px;padding:4px 14px;margin-bottom:12px;
+}
+footer p{font-size:12.5px;color:var(--chalk-dim);max-width:560px;margin:0 auto 6px}
+.foot-dim{color:var(--chalk-faint)!important;font-size:11.5px!important;margin-top:14px!important}
+
+/* ── 태블릿 (761~1024px) ── */
+@media (max-width:1024px){
+  .wrap{max-width:100%;padding:0 24px 80px}
+  .fun-grid{grid-template-columns:repeat(auto-fit,minmax(270px,1fr))}
+  .rk-row{grid-template-columns:38px minmax(88px,1.1fr) 78px 52px 46px minmax(84px,1fr) 88px;gap:8px;padding:11px 12px}
+  .playable{grid-template-columns:230px 1fr}
+}
+/* ── 모바일 (~760px) ── */
+@media (max-width:760px){
+  .wrap{padding:0 16px 70px}
+  header{padding-top:20px}
+  .scoreboard{padding:20px 16px 18px}
+  .sb-vs .t{font-size:clamp(26px,7vw,34px)}
+  .sb-starters{font-size:12.5px}
+  .h2h-card{padding:20px 14px}
+  .hr-score{font-size:clamp(26px,7vw,34px)}
+  .vsb{grid-template-columns:52px 1fr 52px;gap:8px}
+  .vsb .v{font-size:13px}
+  .fun-grid{grid-template-columns:1fr}
+  .fun-card{padding:17px 16px}
+  .p-head{padding:12px 13px}
+  .playable{grid-template-columns:1fr}
+  .stat-cell{flex-direction:column;align-items:flex-start;gap:2px}
+  .p-head{grid-template-columns:32px 1fr 16px;grid-template-areas:"ord name caret" "ord key caret"}
+  .p-ord{grid-area:ord}.p-name{grid-area:name}.p-caret{grid-area:caret}
+  .p-key{grid-area:key;justify-content:flex-start;margin-top:2px}
+  .p-detail-in{grid-template-columns:1fr;justify-items:center}
+  .sb-team .logo{width:58px;height:58px;font-size:20px}
+}
+/* ── 소형 폰 (~400px) ── */
+@media (max-width:400px){
+  .wrap{padding:0 12px 60px}
+  .brand h1{font-size:25px}
+  .brand .en{display:none}
+  .date-chip{font-size:11px;padding:6px 11px;letter-spacing:1px}
+  .sb-team .logo{width:48px;height:48px;font-size:16px;margin-bottom:7px}
+  .sb-team .nm{font-size:14px}
+  .gauge{width:168px}
+  .p-key{gap:9px}
+  .p-key .kv{font-size:13.5px}
+  .p-key .kv em{font-size:.66em}
+  .stat-grid{gap:6px}
+  .rk-row{padding:10px 8px}
+  .news-item{padding:12px 13px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+<script>
+/* ============================================================
+   샘플 데이터 — 릴리즈 시 이 객체를 API 응답으로 교체
+   ============================================================ */
+const DATA = {"lg":{"name":"LG 트윈스","short":"LG","record":"48승 2무 31패 · 1위","game":{"opp":"두산 베어스","oppShort":"두","oppRec":"41승 1무 39패 · 5위","time":"18:30","venue":"잠실야구장 (홈)","meta":"7월 10일 (금) · 잠실 라이벌 시리즈","homeSP":"임찬규","homeSPline":"9승 3패 · ERA 2.87","awaySP":"곽빈","awaySPline":"7승 5패 · ERA 3.62","playable":88,"verdict":"정상 진행 유력","risks":[{"ico":"🌧️","t":"강수","d":"18~21시 강수확률 20% · 예상 강수량 0mm대","lv":"good","lvt":"낮음"},{"ico":"😶‍🌫️","t":"미세먼지","d":"PM10 '보통' (42㎍/㎥) · 경보 기준 미달","lv":"good","lvt":"양호"},{"ico":"🌡️","t":"폭염","d":"경기 시작 시 29℃ · 폭염경보 없음, 수분 보충 권장","lv":"warn","lvt":"주의"},{"ico":"🏟️","t":"구장 일정","d":"잠실 콘서트·행사 일정 없음, 그라운드 상태 정상","lv":"good","lvt":"이상 없음"}]},"h2h":{"my":"LG","op":"두산","w":7,"l":3,"d":0,"recent":["W","W","L","W","W"],"bars":[{"l":"팀 타율","me":0.288,"op":0.271,"max":0.32,"fmt":3},{"l":"팀 평균자책","me":3.42,"op":4.15,"max":6,"fmt":2,"invert":true},{"l":"팀 OPS","me":0.792,"op":0.744,"max":0.9,"fmt":3},{"l":"팀 WHIP","me":1.24,"op":1.38,"max":1.8,"fmt":2,"invert":true},{"l":"경기당 득점","me":5.4,"op":4.7,"max":8,"fmt":1},{"l":"수비효율 DER","me":0.702,"op":0.688,"max":0.75,"fmt":3}],"notes":["잠실 맞대결 5승 1패","최근 두산전 팀 타율 .312","곽빈 상대 통산 OPS .811","1점차 경기 12승 5패"]},"batters":[{"ord":1,"name":"홍창기","pos":"RF","key":{"AVG":".326","OPS":".874","wRCp":"142"},"detail":{"wOBA":".398","BB%":"14.2%","K%":"11.8%","ISO":".102","BABIP":".361","득점권":".338","SB":"14","HR":"3"},"vsKey":{"AVG":".341","OPS":".902","wRCp":"151"},"vsDetail":{"wOBA":".410","BB%":"15.0%","K%":"10.5%","ISO":".095","BABIP":".378","득점권":".357","SB":"3","HR":"0"},"adv":{"RC27":"7.20","GPA":".308","BB/K":"1.20","PSN":"4.94","AB/HR":"110.0","SecA":".306"},"vsAdv":{"RC27":"7.83","GPA":".319","BB/K":"1.43","PSN":"0.00","AB/HR":"—","SecA":".335"},"radar":[88,95,55,70,82],"note":"최근 10경기 타율 .389 — 리그 출루율 1위를 달리는 불붙은 리드오프"},{"ord":2,"name":"신민재","pos":"2B","key":{"AVG":".301","OPS":".735","wRCp":"104"},"detail":{"wOBA":".342","BB%":"9.1%","K%":"10.2%","ISO":".061","BABIP":".334","득점권":".295","SB":"22","HR":"1"},"vsKey":{"AVG":".318","OPS":".760","wRCp":"110"},"vsDetail":{"wOBA":".352","BB%":"8.6%","K%":"9.8%","ISO":".058","BABIP":".347","득점권":".308","SB":"5","HR":"0"},"adv":{"RC27":"5.12","GPA":".258","BB/K":"0.89","PSN":"1.91","AB/HR":"330.0","SecA":".231"},"vsAdv":{"RC27":"5.65","GPA":".267","BB/K":"0.88","PSN":"0.00","AB/HR":"—","SecA":".268"},"radar":[76,80,35,62,95],"note":"도루 성공률 88% — 뛰는 야구의 핵심"},{"ord":3,"name":"오스틴","pos":"1B","key":{"AVG":".317","OPS":".958","wRCp":"158"},"detail":{"wOBA":".421","BB%":"10.4%","K%":"18.5%","ISO":".231","BABIP":".329","득점권":".356","SB":"6","HR":"21"},"vsKey":{"AVG":".352","OPS":"1.087","wRCp":"181"},"vsDetail":{"wOBA":".458","BB%":"11.0%","K%":"16.2%","ISO":".296","BABIP":".340","득점권":".400","SB":"1","HR":"5"},"adv":{"RC27":"8.43","GPA":".322","BB/K":"0.56","PSN":"9.33","AB/HR":"15.7","SecA":".367"},"vsAdv":{"RC27":"11.48","GPA":".360","BB/K":"0.68","PSN":"1.67","AB/HR":"9.0","SecA":".445"},"radar":[85,82,92,66,58],"note":"두산전 통산 홈런 9개 — 오늘의 X팩터"},{"ord":4,"name":"문보경","pos":"3B","key":{"AVG":".295","OPS":".861","wRCp":"133"},"detail":{"wOBA":".382","BB%":"11.6%","K%":"15.4%","ISO":".188","BABIP":".312","득점권":".324","SB":"4","HR":"14"},"vsKey":{"AVG":".289","OPS":".844","wRCp":"128"},"vsDetail":{"wOBA":".375","BB%":"11.2%","K%":"15.9%","ISO":".181","BABIP":".305","득점권":".333","SB":"1","HR":"2"},"adv":{"RC27":"6.98","GPA":".291","BB/K":"0.75","PSN":"6.22","AB/HR":"23.6","SecA":".332"},"vsAdv":{"RC27":"6.61","GPA":".286","BB/K":"0.70","PSN":"1.33","AB/HR":"22.5","SecA":".333"},"radar":[80,84,78,72,52],"note":"7월 월간 OPS .942 상승세"},{"ord":5,"name":"김현수","pos":"DH","key":{"AVG":".289","OPS":".812","wRCp":"121"},"detail":{"wOBA":".361","BB%":"10.8%","K%":"9.7%","ISO":".152","BABIP":".296","득점권":".341","SB":"1","HR":"10"},"vsKey":{"AVG":".344","OPS":".868","wRCp":"135"},"vsDetail":{"wOBA":".381","BB%":"10.2%","K%":"9.0%","ISO":".148","BABIP":".310","득점권":".361","SB":"0","HR":"1"},"adv":{"RC27":"6.14","GPA":".277","BB/K":"1.11","PSN":"1.82","AB/HR":"33.0","SecA":".278"},"vsAdv":{"RC27":"8.37","GPA":".292","BB/K":"1.13","PSN":"0.00","AB/HR":"45.0","SecA":".266"},"radar":[78,86,66,88,30],"note":"통산 곽빈 상대 .371 (35타수 13안타)"},{"ord":6,"name":"박동원","pos":"C","key":{"AVG":".262","OPS":".823","wRCp":"118"},"detail":{"wOBA":".356","BB%":"9.4%","K%":"24.1%","ISO":".243","BABIP":".277","득점권":".288","SB":"0","HR":"18"},"vsKey":{"AVG":".239","OPS":".851","wRCp":"124"},"vsDetail":{"wOBA":".366","BB%":"9.0%","K%":"26.3%","ISO":".289","BABIP":".250","득점권":".263","SB":"0","HR":"4"},"adv":{"RC27":"6.16","GPA":".269","BB/K":"0.39","PSN":"0.00","AB/HR":"18.3","SecA":".350"},"vsAdv":{"RC27":"5.82","GPA":".277","BB/K":"0.34","PSN":"0.00","AB/HR":"11.3","SecA":".393"},"radar":[64,60,90,58,22],"note":"홈런의 절반이 잠실 — 잠실 거포"},{"ord":7,"name":"박해민","pos":"CF","key":{"AVG":".274","OPS":".701","wRCp":"92"},"detail":{"wOBA":".322","BB%":"7.8%","K%":"13.5%","ISO":".074","BABIP":".309","득점권":".266","SB":"25","HR":"2"},"vsKey":{"AVG":".290","OPS":".722","wRCp":"97"},"vsDetail":{"wOBA":".331","BB%":"8.1%","K%":"12.7%","ISO":".071","BABIP":".326","득점권":".278","SB":"4","HR":"0"},"adv":{"RC27":"4.31","GPA":".246","BB/K":"0.58","PSN":"3.70","AB/HR":"165.0","SecA":".238"},"vsAdv":{"RC27":"4.82","GPA":".253","BB/K":"0.64","PSN":"0.00","AB/HR":"—","SecA":".253"},"radar":[70,68,32,60,98],"note":"수비 RAA 리그 외야수 1위"},{"ord":8,"name":"구본혁","pos":"SS","key":{"AVG":".268","OPS":".684","wRCp":"87"},"detail":{"wOBA":".315","BB%":"8.2%","K%":"14.9%","ISO":".068","BABIP":".306","득점권":".301","SB":"7","HR":"1"},"vsKey":{"AVG":".255","OPS":".660","wRCp":"81"},"vsDetail":{"wOBA":".303","BB%":"7.7%","K%":"15.6%","ISO":".060","BABIP":".295","득점권":".286","SB":"1","HR":"0"},"adv":{"RC27":"4.09","GPA":".241","BB/K":"0.55","PSN":"1.75","AB/HR":"330.0","SecA":".182"},"vsAdv":{"RC27":"3.61","GPA":".234","BB/K":"0.49","PSN":"0.00","AB/HR":"—","SecA":".171"},"radar":[66,64,28,58,72],"note":"실책 3개 — 유격수 수비 안정감"},{"ord":9,"name":"허도환","pos":"—","key":{"AVG":".244","OPS":".612","wRCp":"68"},"detail":{"wOBA":".288","BB%":"6.5%","K%":"17.2%","ISO":".051","BABIP":".284","득점권":".231","SB":"0","HR":"0"},"vsKey":{"AVG":".267","OPS":".645","wRCp":"74"},"vsDetail":{"wOBA":".300","BB%":"7.0%","K%":"16.0%","ISO":".048","BABIP":".304","득점권":".250","SB":"0","HR":"0"},"adv":{"RC27":"3.12","GPA":".216","BB/K":"0.38","PSN":"0.00","AB/HR":"—","SecA":".125"},"vsAdv":{"RC27":"3.73","GPA":".227","BB/K":"0.44","PSN":"0.00","AB/HR":"—","SecA":".129"},"radar":[54,50,20,52,35],"note":"임찬규 전담 포수 체제 시 배터리 ERA 2.61"}],"pitchers":{"starter":{"name":"임찬규","hand":"우완","key":{"ERA":"2.87","WHIP":"1.18","K/9":"8.4"},"detail":{"FIP":"3.21","BB/9":"2.6","HR/9":"0.7","QS":"12","피안타율":".238","K%":"21.9%","BB%":"6.8%","이닝":"109.2"},"vsKey":{"ERA":"1.50","WHIP":"0.94","K/9":"9.2"},"vsDetail":{"FIP":"2.40","BB/9":"1.9","HR/9":"0.0","QS":"2","피안타율":".196","K%":"23.9%","BB%":"4.9%","이닝":"12.0"},"adv":{"kwERA":"3.50","K-BB%":"15.8%","K/BB":"3.23","LOB%":"77.3%"},"vsAdv":{"kwERA":"3.07","K-BB%":"19.4%","K/BB":"4.84","LOB%":"—"},"mix":[["체인지업",32,"#E8C067"],["포심",30,"#7FD1A7"],["커브",20,"#8FB7E8"],["슬라이더",18,"#E07A6B"]],"note":"두산전 시즌 2경기 1승 · ERA 1.50 — 체인지업 헛스윙률 38%"},"bullpen":[{"name":"김진성","role":"셋업","key":{"ERA":"2.31","WHIP":"1.02","K/9":"9.1"},"detail":{"FIP":"2.88","BB/9":"2.1","HLD":"18","피안타율":".212","연투":"없음 (휴식 2일)","K%":"23.7%"},"vsKey":{"ERA":"1.13","WHIP":"0.88","K/9":"9.8"},"vsDetail":{"FIP":"2.10","BB/9":"1.5","HLD":"4","피안타율":".185","연투":"—","K%":"25.5%"},"adv":{"kwERA":"3.10","K-BB%":"19.2%","K/BB":"4.33","LOB%":"78.4%"},"vsAdv":{"kwERA":"2.70","K-BB%":"22.5%","K/BB":"6.53","LOB%":"—"},"note":"최근 10경기 무실점 행진"},{"name":"유영찬","role":"마무리","key":{"ERA":"2.05","WHIP":"0.98","K/9":"10.3"},"detail":{"FIP":"2.54","BB/9":"2.8","SV":"24","피안타율":".198","블론":"2","K%":"26.8%"},"vsKey":{"ERA":"1.42","WHIP":"1.05","K/9":"11.4"},"vsDetail":{"FIP":"2.20","BB/9":"2.5","SV":"6","피안타율":".172","블론":"0","K%":"29.7%"},"adv":{"kwERA":"2.95","K-BB%":"20.4%","K/BB":"3.68","LOB%":"78.9%"},"vsAdv":{"kwERA":"2.78","K-BB%":"21.8%","K/BB":"4.56","LOB%":"—"},"note":"세이브 성공률 92.3% · 리그 2위"}]},"fun":{"winprob":63,"keymatch":{"a":"오스틴","b":"곽빈","stats":[["통산 상대","11타수 5안타"],["상대 OPS","1.104"],["홈런","2개"],["삼진","1개"]]},"streak":{"n":"5연승","d":"팀 최근 5경기 전승 · 시즌 최다 연승 타이기록 도전"},"magic":{"n":"M47","d":"정규시즌 우승 매직넘버 · 2위와 3.5경기 차"},"tips":["금요일 잠실 홈경기 평균 관중 21,400명 — 예매 서두르세요","오늘 유니폼 데이: 선착순 입장객 마킹 쿠폰 증정 (샘플)","잠실 도착 추천: 종합운동장역 6번 출구, 경기 90분 전"],"trivia":"피타고리안 승률이란? 득점과 실점만으로 '기대 승률'을 계산하는 지표예요. LG의 실제 승률은 .608, 피타고리안 기대 승률은 <b>.591</b> — 접전 승부에서 기대 이상으로 이기고 있다는 뜻이라, 불펜의 힘이 순위를 끌어올리는 중이라 해석할 수 있어요."}},"ssg":{"name":"SSG 랜더스","short":"SSG","record":"44승 1무 36패 · 3위","game":{"opp":"KIA 타이거즈","oppShort":"KIA","oppRec":"42승 2무 37패 · 4위","time":"18:30","venue":"인천 SSG랜더스필드 (홈)","meta":"7월 10일 (금) · 주말 3연전 1차전","homeSP":"김광현","homeSPline":"8승 4패 · ERA 3.35","awaySP":"네일","awaySPline":"10승 3패 · ERA 2.54","playable":64,"verdict":"우천 변수 주시","risks":[{"ico":"🌧️","t":"강수","d":"인천 18~20시 강수확률 60% · 예상 3~8mm, 소나기성","lv":"warn","lvt":"주시"},{"ico":"😶‍🌫️","t":"미세먼지","d":"PM10 '좋음' (28㎍/㎥)","lv":"good","lvt":"양호"},{"ico":"💨","t":"바람","d":"서풍 6m/s — 우측 담장 방향, 좌타 홈런 변수","lv":"warn","lvt":"참고"},{"ico":"🏟️","t":"구장 일정","d":"행사 없음 · 배수 시설 우수, 소나기 후 재개 가능성 높음","lv":"good","lvt":"이상 없음"}]},"h2h":{"my":"SSG","op":"KIA","w":4,"l":5,"d":1,"recent":["L","W","L","W","L"],"bars":[{"l":"팀 타율","me":0.279,"op":0.291,"max":0.32,"fmt":3},{"l":"팀 평균자책","me":3.88,"op":3.71,"max":6,"fmt":2,"invert":true},{"l":"팀 OPS","me":0.771,"op":0.803,"max":0.9,"fmt":3},{"l":"팀 WHIP","me":1.31,"op":1.29,"max":1.8,"fmt":2,"invert":true},{"l":"경기당 득점","me":5.1,"op":5.5,"max":8,"fmt":1},{"l":"수비효율 DER","me":0.694,"op":0.681,"max":0.75,"fmt":3}],"notes":["인천 맞대결 3승 1패 강세","네일 상대 시즌 팀 타율 .217","김광현 vs KIA 통산 24승","최근 KIA전 경기당 홈런 1.4개"]},"batters":[{"ord":1,"name":"최지훈","pos":"CF","key":{"AVG":".294","OPS":".768","wRCp":"108"},"detail":{"wOBA":".346","BB%":"8.8%","K%":"12.4%","ISO":".098","BABIP":".322","득점권":".281","SB":"19","HR":"4"},"vsKey":{"AVG":".310","OPS":".798","wRCp":"117"},"vsDetail":{"wOBA":".358","BB%":"9.2%","K%":"11.8%","ISO":".104","BABIP":".336","득점권":".296","SB":"4","HR":"1"},"adv":{"RC27":"5.37","GPA":".267","BB/K":"0.71","PSN":"6.61","AB/HR":"82.5","SecA":".256"},"vsAdv":{"RC27":"6.10","GPA":".276","BB/K":"0.78","PSN":"1.60","AB/HR":"45.0","SecA":".299"},"radar":[78,74,42,64,92],"note":"7월 타율 .348 — 여름 사나이 모드 진입"},{"ord":2,"name":"정준재","pos":"2B","key":{"AVG":".288","OPS":".722","wRCp":"98"},"detail":{"wOBA":".331","BB%":"9.6%","K%":"13.1%","ISO":".064","BABIP":".326","득점권":".274","SB":"16","HR":"1"},"vsKey":{"AVG":".275","OPS":".690","wRCp":"90"},"vsDetail":{"wOBA":".318","BB%":"9.0%","K%":"14.0%","ISO":".055","BABIP":".312","득점권":".258","SB":"3","HR":"0"},"adv":{"RC27":"4.78","GPA":".255","BB/K":"0.73","PSN":"1.88","AB/HR":"330.0","SecA":".222"},"vsAdv":{"RC27":"4.22","GPA":".244","BB/K":"0.64","PSN":"0.00","AB/HR":"—","SecA":".226"},"radar":[72,76,30,60,88],"note":"2번 배치 후 팀 득점 경기당 +0.8점"},{"ord":3,"name":"에레디아","pos":"LF","key":{"AVG":".331","OPS":".902","wRCp":"149"},"detail":{"wOBA":".408","BB%":"7.2%","K%":"10.8%","ISO":".164","BABIP":".352","득점권":".367","SB":"5","HR":"12"},"vsKey":{"AVG":".359","OPS":".951","wRCp":"162"},"vsDetail":{"wOBA":".428","BB%":"7.8%","K%":"9.9%","ISO":".179","BABIP":".381","득점권":".389","SB":"1","HR":"2"},"adv":{"RC27":"7.62","GPA":".307","BB/K":"0.67","PSN":"7.06","AB/HR":"27.5","SecA":".261"},"vsAdv":{"RC27":"9.34","GPA":".320","BB/K":"0.79","PSN":"1.33","AB/HR":"22.5","SecA":".291"},"radar":[92,78,72,86,55],"note":"득점권 타율 리그 1위 — 해결사 그 자체"},{"ord":4,"name":"최정","pos":"3B","key":{"AVG":".276","OPS":".924","wRCp":"151"},"detail":{"wOBA":".412","BB%":"13.4%","K%":"19.6%","ISO":".278","BABIP":".269","득점권":".302","SB":"2","HR":"24"},"vsKey":{"AVG":".243","OPS":".868","wRCp":"136"},"vsDetail":{"wOBA":".389","BB%":"14.8%","K%":"22.0%","ISO":".270","BABIP":".231","득점권":".270","SB":"0","HR":"4"},"adv":{"RC27":"7.68","GPA":".305","BB/K":"0.68","PSN":"3.69","AB/HR":"13.8","SecA":".436"},"vsAdv":{"RC27":"6.47","GPA":".288","BB/K":"0.67","PSN":"0.00","AB/HR":"11.3","SecA":".441"},"radar":[74,88,98,70,28],"note":"통산 홈런 KBO 신기록 경신 진행 중 — 네일 상대 홈런 2개"},{"ord":5,"name":"한유섬","pos":"RF","key":{"AVG":".258","OPS":".801","wRCp":"114"},"detail":{"wOBA":".349","BB%":"11.2%","K%":"22.8%","ISO":".212","BABIP":".281","득점권":".266","SB":"1","HR":"15"},"vsKey":{"AVG":".270","OPS":".845","wRCp":"125"},"vsDetail":{"wOBA":".365","BB%":"12.0%","K%":"21.4%","ISO":".243","BABIP":".289","득점권":".281","SB":"0","HR":"3"},"adv":{"RC27":"5.85","GPA":".266","BB/K":"0.49","PSN":"1.88","AB/HR":"22.0","SecA":".342"},"vsAdv":{"RC27":"6.81","GPA":".278","BB/K":"0.56","PSN":"0.00","AB/HR":"15.0","SecA":".382"},"radar":[62,72,84,58,26],"note":"우측 바람 6m/s — 오늘 밀어치기 한 방 기대"},{"ord":6,"name":"박성한","pos":"SS","key":{"AVG":".302","OPS":".812","wRCp":"122"},"detail":{"wOBA":".358","BB%":"10.1%","K%":"14.2%","ISO":".121","BABIP":".338","득점권":".315","SB":"8","HR":"7"},"vsKey":{"AVG":".324","OPS":".856","wRCp":"133"},"vsDetail":{"wOBA":".374","BB%":"10.8%","K%":"13.1%","ISO":".135","BABIP":".360","득점권":".343","SB":"2","HR":"1"},"adv":{"RC27":"6.12","GPA":".281","BB/K":"0.71","PSN":"7.47","AB/HR":"47.1","SecA":".260"},"vsAdv":{"RC27":"7.31","GPA":".293","BB/K":"0.82","PSN":"1.33","AB/HR":"45.0","SecA":".304"},"radar":[80,79,54,68,66],"note":"유격수 수비율 .982 + 3할 타율 — 공수겸장"},{"ord":7,"name":"고명준","pos":"1B","key":{"AVG":".271","OPS":".779","wRCp":"106"},"detail":{"wOBA":".339","BB%":"8.4%","K%":"21.5%","ISO":".175","BABIP":".301","득점권":".289","SB":"2","HR":"11"},"vsKey":{"AVG":".246","OPS":".712","wRCp":"93"},"vsDetail":{"wOBA":".316","BB%":"7.9%","K%":"23.8%","ISO":".152","BABIP":".276","득점권":".259","SB":"0","HR":"1"},"adv":{"RC27":"5.53","GPA":".261","BB/K":"0.39","PSN":"3.38","AB/HR":"30.0","SecA":".277"},"vsAdv":{"RC27":"4.40","GPA":".241","BB/K":"0.33","PSN":"0.00","AB/HR":"45.0","SecA":".243"},"radar":[66,64,74,56,30],"note":"최근 4경기 연속 안타 · 장타 3개"},{"ord":8,"name":"이지영","pos":"C","key":{"AVG":".249","OPS":".618","wRCp":"70"},"detail":{"wOBA":".291","BB%":"5.8%","K%":"9.4%","ISO":".052","BABIP":".272","득점권":".258","SB":"1","HR":"1"},"vsKey":{"AVG":".261","OPS":".640","wRCp":"77"},"vsDetail":{"wOBA":".300","BB%":"6.0%","K%":"8.8%","ISO":".058","BABIP":".283","득점권":".273","SB":"0","HR":"0"},"adv":{"RC27":"3.20","GPA":".218","BB/K":"0.62","PSN":"1.00","AB/HR":"330.0","SecA":".121"},"vsAdv":{"RC27":"3.60","GPA":".224","BB/K":"0.68","PSN":"0.00","AB/HR":"—","SecA":".127"},"radar":[58,48,18,62,34],"note":"김광현 배터리 ERA 2.98 — 베테랑 리드"},{"ord":9,"name":"김성현","pos":"—","key":{"AVG":".255","OPS":".641","wRCp":"76"},"detail":{"wOBA":".299","BB%":"7.1%","K%":"12.8%","ISO":".058","BABIP":".288","득점권":".242","SB":"3","HR":"1"},"vsKey":{"AVG":".238","OPS":".601","wRCp":"66"},"vsDetail":{"wOBA":".283","BB%":"6.8%","K%":"13.5%","ISO":".048","BABIP":".268","득점권":".222","SB":"1","HR":"0"},"adv":{"RC27":"3.52","GPA":".226","BB/K":"0.55","PSN":"1.50","AB/HR":"330.0","SecA":".148"},"vsAdv":{"RC27":"2.97","GPA":".213","BB/K":"0.50","PSN":"0.00","AB/HR":"—","SecA":".149"},"radar":[60,54,20,58,48],"note":"내야 전 포지션 소화 가능한 살림꾼"}],"pitchers":{"starter":{"name":"김광현","hand":"좌완","key":{"ERA":"3.35","WHIP":"1.26","K/9":"7.9"},"detail":{"FIP":"3.68","BB/9":"3.1","HR/9":"0.9","QS":"10","피안타율":".251","K%":"20.6%","BB%":"8.1%","이닝":"102.1"},"vsKey":{"ERA":"2.96","WHIP":"1.19","K/9":"8.3"},"vsDetail":{"FIP":"3.30","BB/9":"2.8","HR/9":"0.6","QS":"3","피안타율":".231","K%":"21.6%","BB%":"7.3%","이닝":"24.1"},"adv":{"kwERA":"3.83","K-BB%":"13.1%","K/BB":"2.55","LOB%":"76.3%"},"vsAdv":{"kwERA":"3.62","K-BB%":"14.8%","K/BB":"2.96","LOB%":"—"},"mix":[["슬라이더",38,"#E07A6B"],["포심",34,"#7FD1A7"],["커브",15,"#8FB7E8"],["체인지업",13,"#E8C067"]],"note":"KIA 상대 통산 24승 — 슬라이더 피안타율 .188"},"bullpen":[{"name":"노경은","role":"셋업","key":{"ERA":"3.12","WHIP":"1.21","K/9":"7.2"},"detail":{"FIP":"3.44","BB/9":"2.9","HLD":"16","피안타율":".243","연투":"1일 (어제 12구)","K%":"18.7%"},"vsKey":{"ERA":"2.84","WHIP":"1.16","K/9":"7.6"},"vsDetail":{"FIP":"3.20","BB/9":"2.6","HLD":"3","피안타율":".238","연투":"—","K%":"19.8%"},"adv":{"kwERA":"3.89","K-BB%":"12.6%","K/BB":"2.48","LOB%":"76.8%"},"vsAdv":{"kwERA":"3.79","K-BB%":"13.4%","K/BB":"2.92","LOB%":"—"},"note":"시즌 41경기 등판 — 철벽 워크호스"},{"name":"조병현","role":"마무리","key":{"ERA":"2.48","WHIP":"1.08","K/9":"11.2"},"detail":{"FIP":"2.71","BB/9":"3.4","SV":"21","피안타율":".201","블론":"3","K%":"29.1%"},"vsKey":{"ERA":"1.86","WHIP":"0.93","K/9":"12.1"},"vsDetail":{"FIP":"2.30","BB/9":"2.9","SV":"4","피안타율":".176","블론":"1","K%":"31.5%"},"adv":{"kwERA":"2.77","K-BB%":"21.9%","K/BB":"3.29","LOB%":"78.0%"},"vsAdv":{"kwERA":"2.51","K-BB%":"24.1%","K/BB":"4.17","LOB%":"—"},"note":"탈삼진율 리그 마무리 1위 — 하이패스트볼 헛스윙 41%"}]},"fun":{"winprob":48,"keymatch":{"a":"최정","b":"네일","stats":[["통산 상대","14타수 4안타"],["상대 OPS",".897"],["홈런","2개"],["볼넷","3개"]]},"streak":{"n":"홈 4연승","d":"인천 홈 최근 4경기 전승 · 홈 승률 .627"},"magic":{"n":"+2.5","d":"2위 삼성과의 승차 · 이번 주말 3연전이 분수령"},"tips":["금요일 인천 홈경기, 우천 시 취소 여부는 보통 16시 전후 발표","랜더스필드 배수 능력은 리그 최상급 — 소나기면 지연 후 진행 가능성","문학경기장역 2번 출구 도보 10분, 우산 챙기세요"],"trivia":"WHIP이란? '이닝당 출루 허용'으로 투수가 매 이닝 주자를 몇 명 내보내는지 보여줘요. 오늘 선발 김광현의 WHIP 1.26은 한 이닝에 대략 주자 1.3명 — 상대 네일은 1.02로 <b>리그 최상위권</b>이라, SSG 타선은 초반 찬스를 놓치면 안 되는 경기예요."}}};
+
+/* 경기 시작 전 KBO 순위 — 샘플 (trend: 최근 8주 승률 흐름 0~1) */
+const STANDINGS = [
+ {rk:1, team:"LG 트윈스",  home:"잠실", mine:"lg",  w:48,d:2,l:31, pct:".608", gb:"—",   ten:["W","W","L","W","W","L","W","W","W","W"], stk:"5연승", trend:[.52,.55,.54,.58,.57,.60,.59,.61]},
+ {rk:2, team:"삼성 라이온즈", home:"대구", mine:null, w:47,d:1,l:34, pct:".580", gb:"2.0", ten:["W","L","W","W","L","W","W","L","W","W"], stk:"2연승", trend:[.60,.58,.59,.57,.58,.57,.58,.58]},
+ {rk:3, team:"SSG 랜더스", home:"인천", mine:"ssg", w:44,d:1,l:36, pct:".550", gb:"4.5", ten:["L","W","W","L","W","L","W","W","L","W"], stk:"1승",   trend:[.49,.51,.50,.53,.52,.54,.54,.55]},
+ {rk:4, team:"KIA 타이거즈", home:"광주", mine:null, w:42,d:2,l:37, pct:".532", gb:"6.0", ten:["W","W","L","L","W","W","L","W","L","L"], stk:"2연패", trend:[.58,.57,.55,.56,.54,.54,.53,.53]},
+ {rk:5, team:"두산 베어스",  home:"잠실", mine:null, w:41,d:1,l:39, pct:".513", gb:"7.5", ten:["L","W","W","W","L","W","L","L","W","L"], stk:"1패",   trend:[.47,.49,.50,.52,.51,.52,.52,.51]},
+ {rk:6, team:"KT 위즈",     home:"수원", mine:null, w:40,d:2,l:39, pct:".506", gb:"8.0", ten:["W","L","L","W","W","W","W","L","W","W"], stk:"2연승", trend:[.44,.45,.47,.46,.48,.49,.50,.51]},
+ {rk:7, team:"NC 다이노스",  home:"창원", mine:null, w:38,d:1,l:41, pct:".481", gb:"10.0",ten:["L","L","W","L","W","L","W","W","L","W"], stk:"1승",   trend:[.52,.50,.49,.50,.48,.48,.48,.48]},
+ {rk:8, team:"롯데 자이언츠", home:"부산", mine:null, w:36,d:2,l:42, pct:".462", gb:"11.5",ten:["W","L","L","L","W","L","L","W","L","L"], stk:"2연패", trend:[.50,.51,.49,.48,.47,.47,.46,.46]},
+ {rk:9, team:"한화 이글스",  home:"대전", mine:null, w:33,d:1,l:46, pct:".418", gb:"15.0",ten:["L","W","L","L","L","W","L","L","W","L"], stk:"1패",   trend:[.45,.44,.43,.44,.42,.42,.42,.42]},
+ {rk:10,team:"키움 히어로즈", home:"고척", mine:null, w:27,d:2,l:51, pct:".346", gb:"20.5",ten:["L","L","W","L","L","L","L","W","L","L"], stk:"2연패", trend:[.40,.39,.38,.37,.37,.36,.35,.35]}
+];
+
+/* 두 팀 주요 뉴스 — 실제 기사 링크 (릴리즈 시 뉴스 검색 API로 자동 갱신)
+   window: 경기 전날 ~ 당일 아침 업데이트분, 키워드: 구단명 */
+const NEWS = [
+ {team:"lg",  press:"미주중앙일보 (OSEN)", time:"7/8 수", official:false,
+  title:"1위 자리 하루 만에 되찾다…14안타 폭발 역전승, 염경엽 감독 \"홍창기 공수 활약 컸다\"",
+  url:"https://www.koreadaily.com/article/20260708091442850"},
+ {team:"lg",  press:"LG트윈스 구단 발표", time:"수시 업데이트", official:true,
+  title:"구단 공식 뉴스·공지 모아보기 — 이벤트, 선수단 소식, 티켓 안내",
+  url:"https://www.lgtwins.com/twins/feed/news"},
+ {team:"lg",  press:"다음스포츠", time:"실시간", official:false,
+  title:"LG 트윈스 팀 뉴스 전체 보기 — 경기 프리뷰·리뷰·영상 모아보기",
+  url:"https://sports.daum.net/team/kbo/387"},
+ {team:"ssg", press:"한겨레 (네이트)", time:"7/5 일", official:false,
+  title:"SSG, 연패 늪에서 고전…최근 41경기 승률 급락, 반등 실마리 찾기 총력",
+  url:"https://sports.news.nate.com/view/20260705n16089"},
+ {team:"ssg", press:"스타뉴스", time:"6/30 화", official:false,
+  title:"선발진 재편 나선 SSG…신인 김민준·새 외인 해치가 로테이션 반등 열쇠",
+  url:"https://www.starnewskorea.com/sports/2026/06/30/2026062914350837375"},
+ {team:"ssg", press:"SSG랜더스 구단 발표", time:"수시 업데이트", official:true,
+  title:"구단 공식 소식 모아보기 — 만원 관중·마스코트 데이·MD 출시 소식",
+  url:"https://www.ssglanders.com/media/news"},
+ {team:"ssg", press:"다음스포츠", time:"실시간", official:false,
+  title:"SSG 랜더스 팀 뉴스 전체 보기 — 경기 프리뷰·리뷰·영상 모아보기",
+  url:"https://sports.daum.net/team/kbo/384"}
+];
+let NEWSF = "all";
+
+/* ============================================================
+   렌더링 로직
+   ============================================================ */
+let TEAM = "lg", TAB = "bat";
+
+const $ = id => document.getElementById(id);
+const fmt = (v,d)=> d===3 ? v.toFixed(3).replace(/^0/,"") : v.toFixed(d);
+
+function setTeam(t){
+  CUR = t;
+  const view = (t==="rank" || t==="news") ? t : null;
+  ["sec-game","sec-h2h","sec-lineup","sec-fun"].forEach(id => $(id).hidden = !!view);
+  $("sec-rank").hidden = view!=="rank";
+  $("sec-news").hidden = view!=="news";
+  $("btn-lg").classList.toggle("on", t==="lg");
+  $("btn-ssg").classList.toggle("on", t==="ssg");
+  $("btn-rank").classList.toggle("on", t==="rank");
+  $("btn-news").classList.toggle("on", t==="news");
+  if(view==="rank"){ renderRank(); return; }
+  if(view==="news"){ renderNews(); return; }
+  TEAM = t;
+  document.body.dataset.team = t;
+  render();
+}
+
+/* ---------- 뉴스 ---------- */
+function setNewsFilter(f){
+  NEWSF = f;
+  document.querySelectorAll(".nf-btn").forEach(b=>b.classList.toggle("on", b.dataset.f===f));
+  renderNews();
+}
+function renderNews(){
+  const color = {lg:"#D0166B", ssg:"#E3252F"};
+  const items = NEWS.filter(n => NEWSF==="all" || n.team===NEWSF);
+  $("newsList").innerHTML = items.map(n=>`
+    <div class="news-item ${n.official?"official":""}" style="--nteam:${color[n.team]}">
+      <div class="news-side">
+        <span class="news-team">${n.team==="lg"?"LG TWINS":"SSG LANDERS"}</span>
+        <span class="news-press">${n.press}</span>
+        <span class="news-time">${n.time}</span>
+      </div>
+      <a href="${n.url}" target="_blank" rel="noopener noreferrer">${n.title}${n.official?'<span class="news-badge">OFFICIAL</span>':""}</a>
+      <span class="news-arrow">↗</span>
+    </div>`).join("");
+}
+
+/* ---------- KBO 순위표 ---------- */
+function sparkSVG(vals){
+  const W=96,H=30,pad=3;
+  const min=Math.min(...vals), max=Math.max(...vals), span=(max-min)||.01;
+  const pts = vals.map((v,i)=>[pad+i*(W-2*pad)/(vals.length-1), H-pad-(v-min)/span*(H-2*pad)]);
+  const up = vals[vals.length-1] >= vals[0];
+  const line = pts.map(p=>p.map(n=>n.toFixed(1)).join(",")).join(" ");
+  const last = pts[pts.length-1];
+  return `<svg class="rk-spark" viewBox="0 0 ${W} ${H}" aria-hidden="true">
+    <polyline points="${line}" fill="none" stroke="${up?"var(--good)":"var(--bad)"}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity=".85"/>
+    <circle cx="${last[0]}" cy="${last[1]}" r="2.6" fill="${up?"var(--good)":"var(--bad)"}"/>
+  </svg>`;
+}
+function renderRank(){
+  const myColor = {lg:"#D0166B", ssg:"#E3252F"};
+  $("rankTable").innerHTML =
+    `<div class="rk-row head"><div class="rk-no">#</div><div>팀</div><div>승-무-패</div><div>승률</div><div class="rk-gb">게임차</div><div>최근 10경기</div><div>추이</div></div>` +
+    STANDINGS.map(s=>`
+    <div class="rk-row ${s.mine?"mine":""}" ${s.mine?`style="--my:${myColor[s.mine]};--my-soft:${myColor[s.mine]}26"`:""}>
+      <div class="rk-no">${s.rk}</div>
+      <div class="rk-team">${s.team}<small>${s.home} · ${s.stk}</small></div>
+      <div class="rk-rec">${s.w}-${s.d}-${s.l}</div>
+      <div class="rk-pct">${s.pct}</div>
+      <div class="rk-gb">${s.gb}</div>
+      <div class="rk-ten">${s.ten.map(r=>`<i class="${r.toLowerCase()}" title="${r}"></i>`).join("")}</div>
+      ${sparkSVG(s.trend)}
+    </div>`).join("");
+}
+function setTab(t){
+  TAB = t;
+  $("tab-bat").classList.toggle("on", t==="bat");
+  $("tab-pit").classList.toggle("on", t==="pit");
+  renderLineup();
+}
+
+function render(){
+  const D = DATA[TEAM], G = D.game;
+  /* 전광판 */
+  $("homeLogo").textContent = D.short;
+  $("homeName").textContent = D.name;
+  $("homeRec").textContent = D.record;
+  $("awayLogo").textContent = G.oppShort;
+  $("awayName").textContent = G.opp;
+  $("awayRec").textContent = G.oppRec;
+  $("gameTime").textContent = G.time;
+  $("gameVenue").textContent = G.venue;
+  $("sbMeta").textContent = G.meta;
+  $("homeSP").textContent = G.homeSP; $("homeSPline").textContent = G.homeSPline;
+  $("awaySP").textContent = G.awaySP; $("awaySPline").textContent = G.awaySPline;
+
+  /* 진행 가능성 게이지 */
+  const p = G.playable, arc = $("gaugeArc");
+  arc.style.strokeDashoffset = 283 - 283*(p/100);
+  arc.style.stroke = p>=75 ? "var(--good)" : p>=50 ? "var(--warn)" : "var(--bad)";
+  animateNum($("gaugeNum"), p);
+  const gv = $("gaugeVerdict");
+  gv.textContent = G.verdict;
+  gv.style.color = p>=75 ? "var(--good)" : p>=50 ? "var(--warn)" : "var(--bad)";
+  $("riskList").innerHTML = G.risks.map(r=>`
+    <div class="risk">
+      <div class="ico">${r.ico}</div>
+      <div><div class="t">${r.t}</div><div class="d">${r.d}</div></div>
+      <div class="lv lv-${r.lv}">${r.lvt}</div>
+    </div>`).join("");
+
+  /* 맞대결 */
+  const H = D.h2h;
+  $("h2hLeft").innerHTML = `${H.my}<small>MY TEAM</small>`;
+  $("h2hRight").innerHTML = `${H.op}<small>OPPONENT</small>`;
+  $("h2hScore").textContent = `${H.w} - ${H.l}`;
+  $("h2hDraw").textContent = H.d ? `(무 ${H.d})` : "";
+  $("h2hRecent").innerHTML = H.recent.map(r=>`<i class="${r==="W"?"w":"l"}">${r}</i>`).join("");
+  $("vsBars").innerHTML = H.bars.map((b,i)=>{
+    const meWin = b.invert ? b.me < b.op : b.me > b.op;
+    const meW = Math.min(48, (b.me/b.max)*48), opW = Math.min(48,(b.op/b.max)*48);
+    return `<div class="vsb">
+      <div class="v ${meWin?"win":""}">${fmt(b.me,b.fmt)}</div>
+      <div class="track">
+        <div class="lab">${b.l}${b.invert?" ↓":""}</div>
+        <div class="mid-line"></div>
+        <div class="bar me" style="width:0" data-w="${meW}%"></div>
+        <div class="bar op" style="width:0" data-w="${opW}%"></div>
+      </div>
+      <div class="v r ${!meWin?"win":""}">${fmt(b.op,b.fmt)}</div>
+    </div>`;
+  }).join("");
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    document.querySelectorAll(".vsb .bar").forEach(el=>el.style.width = el.dataset.w);
+  }));
+  $("h2hNotes").innerHTML = H.notes.map(n=>`<div class="note-chip">${n}</div>`).join("");
+
+  renderLineup();
+  renderFun();
+}
+
+/* ---------- 레이더 차트 (타자: 정확 · 출루 · 파워 · 클러치 · 스피드) ---------- */
+function radarSVG(vals){
+  const cx=85, cy=85, R=62, N=5;
+  const labels=["정확","출루","파워","클러치","스피드"];
+  const pt=(i,r)=>{const a=-Math.PI/2 + i*2*Math.PI/N; return [cx+r*Math.cos(a), cy+r*Math.sin(a)];};
+  let grid="";
+  [0.33,0.66,1].forEach(s=>{
+    grid += `<polygon points="${Array.from({length:N},(_,i)=>pt(i,R*s).join(",")).join(" ")}" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1"/>`;
+  });
+  const axes = Array.from({length:N},(_,i)=>{const [x,y]=pt(i,R);return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="rgba(255,255,255,.1)"/>`;}).join("");
+  const poly = Array.from({length:N},(_,i)=>pt(i,R*vals[i]/100).join(",")).join(" ");
+  const labs = Array.from({length:N},(_,i)=>{const [x,y]=pt(i,R+14);return `<text x="${x}" y="${y+3}" text-anchor="middle" font-size="10" fill="rgba(243,238,226,.55)" font-family="Noto Sans KR">${labels[i]}</text>`;}).join("");
+  return `<svg class="radar" viewBox="0 0 170 170" aria-hidden="true">${grid}${axes}
+    <polygon points="${poly}" fill="var(--team-soft)" stroke="var(--team)" stroke-width="2"/>
+    ${labs}</svg>`;
+}
+
+const GLOSS = {
+  wOBA:"가중 출루율 — 안타·볼넷 등 타격 사건의 실제 득점 가치를 가중 평균한 출루 지표",
+  "BB%":"타석당 볼넷 비율", "K%":"타석당 삼진 비율",
+  ISO:"순수 장타력 = 장타율 − 타율", BABIP:"인플레이 타구의 안타 비율 — 운과 타구 질을 가늠",
+  "득점권":"득점권 상황 타율", SB:"도루", HR:"홈런",
+  RC27:"이 선수로만 라인업을 채우면 27아웃 동안 몇 점을 내는지 — NPB에서 애용하는 득점창출 지표",
+  GPA:"(1.8×출루율+장타율)÷4 — 타율처럼 읽는 종합 타격 지표 (.260이면 준수, .300이면 특급)",
+  "BB/K":"볼넷 대 삼진 비율 — 1.0 이상이면 존 장악형 타자",
+  PSN:"파워-스피드 넘버 — 홈런과 도루의 조화 평균. 호타준족일수록 높음",
+  "AB/HR":"홈런 1개당 필요 타수 — 낮을수록 거포",
+  SecA:"2차 타율 — 타율에 안 잡히는 장타·볼넷·도루 생산력 (.300 이상이면 우수)",
+  FIP:"수비 무관 평균자책 — 삼진·볼넷·피홈런만으로 본 투수 본연의 실력",
+  "BB/9":"9이닝당 볼넷", "HR/9":"9이닝당 피홈런", QS:"퀄리티스타트 (6이닝 3자책 이하)",
+  "피안타율":"상대 타자들의 타율", WAR:"대체 선수 대비 승리 기여도",
+  "땅볼%":"전체 타구 중 땅볼 비율", "이닝":"시즌 소화 이닝",
+  HLD:"홀드", SV:"세이브", "블론":"블론세이브", "연투":"연속 등판 상태 — 불펜 피로도 체크",
+  "K-BB%":"삼진율 − 볼넷율 — 구위와 제구를 동시에 평가",
+  kwERA:"삼진·볼넷만으로 계산한 기대 평균자책 — 5.40 − 12×(K−BB%). 미래 예측력이 높은 간이 지표",
+  "K/BB":"삼진 대 볼넷 비율 — 3.0 이상이면 정상급 제구·구위",
+  "LOB%":"잔루 처리율 — 내보낸 주자를 홈에 안 들여보낸 비율. 리그 평균 약 72%"
+};
+function statCells(detail, vs={}, hotKeys=[]){
+  return Object.entries(detail).map(([k,v])=>
+    `<div class="stat-cell ${hotKeys.includes(k)?"hot":""}"><div class="l" title="${GLOSS[k]||k}">${k}</div><div class="v">${v}<em>(${vs[k] ?? "—"})</em></div></div>`).join("");
+}
+
+function batterRow(b){
+  return `<div class="p-row" tabindex="0" role="button" aria-expanded="false" onclick="toggleRow(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleRow(this)}">
+    <div class="p-head">
+      <div class="p-ord">${b.ord}</div>
+      <div class="p-name">${b.name}<small>${b.pos}</small></div>
+      <div class="p-key">
+        <div><div class="kv">${b.key.AVG}<em>(${b.vsKey.AVG})</em></div><div class="kl">AVG</div></div>
+        <div><div class="kv">${b.key.OPS}<em>(${b.vsKey.OPS})</em></div><div class="kl">OPS</div></div>
+        <div><div class="kv">${b.key.wRCp}<em>(${b.vsKey.wRCp})</em></div><div class="kl">wRC+</div></div>
+      </div>
+      <div class="p-caret">▼</div>
+    </div>
+    <div class="p-detail"><div class="p-detail-in">
+      ${radarSVG(b.radar)}
+      <div class="stat-col">
+        <div class="stat-gt">Season Detail · 시즌 세부</div>
+        <div class="stat-grid">${statCells(b.detail, b.vsDetail, ["득점권","wOBA"])}</div>
+        <div class="stat-gt">Advanced <span class="adv-badge">Sabermetrics · 자체 계산</span></div>
+        <div class="stat-grid">${statCells(b.adv, b.vsAdv, ["RC27","GPA"])}</div>
+      </div>
+      <div class="p-note">📌 ${b.note} · <u style="text-decoration-style:dotted">지표명에 마우스를 올리면 설명이 보여요</u></div>
+    </div></div>
+  </div>`;
+}
+
+function pitcherRow(p, ord, role){
+  return `<div class="p-row" tabindex="0" role="button" aria-expanded="false" onclick="toggleRow(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleRow(this)}">
+    <div class="p-head">
+      <div class="p-ord">${ord}</div>
+      <div class="p-name">${p.name}<small>${role}</small></div>
+      <div class="p-key">
+        <div><div class="kv">${p.key.ERA}<em>(${p.vsKey.ERA})</em></div><div class="kl">ERA</div></div>
+        <div><div class="kv">${p.key.WHIP}<em>(${p.vsKey.WHIP})</em></div><div class="kl">WHIP</div></div>
+        <div><div class="kv">${p.key["K/9"]}<em>(${p.vsKey["K/9"]})</em></div><div class="kl">K/9</div></div>
+      </div>
+      <div class="p-caret">▼</div>
+    </div>
+    <div class="p-detail"><div class="p-detail-in" style="grid-template-columns:1fr">
+      <div class="stat-col">
+        <div class="stat-gt">Season Detail · 시즌 세부</div>
+        <div class="stat-grid">${statCells(p.detail, p.vsDetail, ["FIP"])}</div>
+        <div class="stat-gt">Advanced <span class="adv-badge">Sabermetrics · 자체 계산</span></div>
+        <div class="stat-grid">${statCells(p.adv, p.vsAdv, ["kwERA","K-BB%"])}</div>
+      </div>
+      ${p.mix ? `<div style="width:100%">
+        <div class="pit-role" style="margin-top:6px">Pitch Mix · 구종 구사율</div>
+        <div class="pitch-mix">${p.mix.map(m=>`<span style="width:${m[1]}%;background:${m[2]}"></span>`).join("")}</div>
+        <div class="pitch-legend">${p.mix.map(m=>`<span><i style="background:${m[2]}"></i>${m[0]} ${m[1]}%</span>`).join("")}</div>
+      </div>`:""}
+      <div class="p-note">📌 ${p.note}</div>
+    </div></div>
+  </div>`;
+}
+
+function renderLineup(){
+  const D = DATA[TEAM];
+  const legend = `<div class="vs-legend">시즌 기록 <b>(오늘 상대 ${D.game.opp} 상대 기록)</b> 순으로 표시 · 라이브 데이터의 wRC+*는 파크팩터 미보정 자체 계산값이에요</div>`;
+  if(TAB==="bat"){
+    $("lineupArea").innerHTML = legend + `<div class="p-list">${D.batters.map(batterRow).join("")}</div>`;
+  }else{
+    const P = D.pitchers;
+    $("lineupArea").innerHTML = legend + `
+      <div class="pit-role">Starter · 오늘의 선발</div>
+      <div class="p-list">${pitcherRow(P.starter,"선발",P.starter.hand)}</div>
+      <div class="pit-role">Bullpen · 필승조 대기</div>
+      <div class="p-list">${P.bullpen.map((p,i)=>pitcherRow(p,i+1,p.role)).join("")}</div>`;
+  }
+}
+
+function toggleRow(el){
+  el.classList.toggle("open");
+  el.setAttribute("aria-expanded", el.classList.contains("open"));
+}
+
+function renderFun(){
+  const F = DATA[TEAM].fun, D = DATA[TEAM], G = D.game;
+  $("funGrid").innerHTML = `
+    <div class="card fun-card">
+      <h3><span class="em">🔮</span>오늘의 승리 확률</h3>
+      <div class="winprob-bar">
+        <div class="me" style="width:${F.winprob}%">${F.winprob}%</div>
+        <div class="op" style="width:${100-F.winprob}%">${100-F.winprob}%</div>
+      </div>
+      <div class="fun-dim">${D.short} vs ${G.oppShort} · 선발 매치업 + 상대전적 + 최근 폼 기반 샘플 모델</div>
+    </div>
+    <div class="card fun-card">
+      <h3><span class="em">⚔️</span>오늘의 키 매치업</h3>
+      <div class="km-face"><b>${F.keymatch.a}</b><span class="vs">VS</span><b>${F.keymatch.b}</b></div>
+      <div class="km-stats">${F.keymatch.stats.map(s=>`<span class="km-chip">${s[0]} <b>${s[1]}</b></span>`).join("")}</div>
+    </div>
+    <div class="card fun-card">
+      <h3><span class="em">🔥</span>지금 이 기세</h3>
+      <div class="streak-num">${F.streak.n}</div>
+      <div class="fun-dim" style="margin-top:6px">${F.streak.d}</div>
+    </div>
+    <div class="card fun-card">
+      <h3><span class="em">🧮</span>레이스 트래커</h3>
+      <div class="streak-num" style="color:var(--sand);text-shadow:none">${F.magic.n}</div>
+      <div class="fun-dim" style="margin-top:6px">${F.magic.d}</div>
+    </div>
+    <div class="card fun-card">
+      <h3><span class="em">🎟️</span>직관 메모</h3>
+      <ul class="tip-list">${F.tips.map(t=>`<li>${t}</li>`).join("")}</ul>
+    </div>
+    <div class="card fun-card">
+      <h3><span class="em">💡</span>오늘의 세이버 한 입</h3>
+      <div class="trivia">${F.trivia}</div>
+    </div>`;
+}
+
+function animateNum(el, target){
+  const t0 = performance.now(), dur = 900;
+  const step = now=>{
+    const k = Math.min(1,(now-t0)/dur), ease = 1-Math.pow(1-k,3);
+    el.textContent = Math.round(target*ease)+"%";
+    if(k<1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+/* ============================================================
+   실데이터 로더 — 배치가 갱신하는 /data.json을 읽어 교체
+   안전장치: ① 배치가 검증 실패 시 저장 자체를 차단(서버)
+            ② 프런트에서 스키마 재검증 — 실패 시 이전 데이터 유지
+            ③ 로드 실패 시 내장 샘플로 폴백 (빈 화면·오류 노출 없음)
+   ============================================================ */
+const META = { source:"embedded", batch1:null, batch2:null };
+
+function validateData(j){
+  try{
+    if(!j || typeof j !== "object" || !j.teams) return false;
+    for(const t of ["lg","ssg"]){
+      const D = j.teams[t]; if(!D) return false;
+      if(typeof D.name!=="string" || typeof D.record!=="string" || typeof D.short!=="string") return false;
+      const G = D.game; if(!G) return false;
+      for(const k of ["opp","oppShort","oppRec","time","venue","meta","homeSP","homeSPline","awaySP","awaySPline","verdict"])
+        if(typeof G[k] !== "string" || !G[k]) return false;
+      if(!(typeof G.playable==="number" && G.playable>=0 && G.playable<=100)) return false;
+      if(!Array.isArray(G.risks) || G.risks.length<1 || G.risks.some(r=>!r.t||!r.d||!r.lv||!r.lvt)) return false;
+      const H = D.h2h;
+      if(!H || !Array.isArray(H.bars) || H.bars.length<1 || !Array.isArray(H.recent) || !Array.isArray(H.notes)) return false;
+      if(H.bars.some(b=>typeof b.me!=="number"||typeof b.op!=="number"||!b.l)) return false;
+      if(!Array.isArray(D.batters) || D.batters.length!==9) return false;
+      for(const b of D.batters){
+        if(!b.name || !b.key || !b.detail || !b.vsKey || !b.vsDetail || !b.adv || !b.vsAdv) return false;
+        if(!Array.isArray(b.radar) || b.radar.length!==5 || b.radar.some(v=>typeof v!=="number")) return false;
+      }
+      const P = D.pitchers;
+      if(!P || !P.starter || !Array.isArray(P.bullpen) || P.bullpen.length<1) return false;
+      for(const p of [P.starter, ...P.bullpen])
+        if(!p.name || !p.key || !p.detail || !p.vsKey || !p.vsDetail || !p.adv || !p.vsAdv || !p.note) return false;
+      if(!Array.isArray(P.starter.mix) || P.starter.mix.length<1) return false;
+      const F = D.fun;
+      if(!F || !(F.winprob>=0 && F.winprob<=100) || !F.keymatch || !Array.isArray(F.tips)) return false;
+    }
+    if(j.standings){
+      if(!Array.isArray(j.standings) || j.standings.length!==10) return false;
+      if(j.standings.some(s=>!s.team || !Array.isArray(s.ten) || s.ten.length!==10 || !Array.isArray(s.trend) || s.trend.length<2)) return false;
+    }
+    if(j.news){
+      if(!Array.isArray(j.news) || j.news.length<1) return false;
+      if(j.news.some(n=>!n.title || !/^https:\/\//.test(n.url) || !["lg","ssg"].includes(n.team))) return false;
+    }
+    return true;
+  }catch(e){ return false; }
+}
+
+function currentView(){
+  if($("btn-rank").classList.contains("on")) return "rank";
+  if($("btn-news").classList.contains("on")) return "news";
+  return TEAM;
+}
+
+function renderMeta(){
+  const el = $("dataStatus");
+  if(META.source === "live"){
+    el.innerHTML =
+      `<span class="ds-chip ok">LIVE 데이터</span>` +
+      `<span class="ds-chip ${META.batch1?"ok":"wait"}" title="선발투수·경기정보·순위·뉴스 — 경기 당일 0시 갱신">1배치 선발 ${META.batch1 || "대기"}</span>` +
+      `<span class="ds-chip ${META.batch2?"ok":"wait"}" title="당일 라인업 — 경기 시작 90분 전 갱신">2배치 라인업 ${META.batch2 || "대기"}</span>`;
+  }else{
+    el.innerHTML = `<span class="ds-chip" title="배포 후 배치가 data.json을 갱신하면 자동으로 LIVE 전환됩니다">샘플 데이터 · 배포 시 자동 LIVE 전환</span>`;
+  }
+}
+
+async function loadLive(){
+  try{
+    const r = await fetch("./data.json?ts=" + Date.now(), { cache:"no-store" });
+    if(!r.ok) throw new Error("no data.json");
+    const j = await r.json();
+    if(!validateData(j)) throw new Error("schema invalid — keeping current data");
+    DATA.lg = j.teams.lg;
+    DATA.ssg = j.teams.ssg;
+    if(j.standings) STANDINGS.splice(0, STANDINGS.length, ...j.standings);
+    if(j.news) NEWS.splice(0, NEWS.length, ...j.news);
+    META.source = "live";
+    META.batch1 = j.meta && j.meta.batch1 || null;
+    META.batch2 = j.meta && j.meta.batch2 || null;
+    setTeam(currentView());   // 현재 보고 있는 뷰 그대로 다시 그림
+  }catch(e){
+    /* 실패해도 화면은 항상 정상 — 내장/이전 데이터 유지 */
+    console.warn("live data unavailable:", e.message);
+  }
+  renderMeta();
+}
+
+/* 날짜 칩 */
+(function(){
+  const d = new Date();
+  const days = ["일","월","화","수","목","금","토"];
+  $("todayChip").textContent = `${d.getFullYear()}. ${d.getMonth()+1}. ${d.getDate()} (${days[d.getDay()]})`;
+})();
+
+render();
+renderMeta();
+loadLive();
+</script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+# 모닝볼 (Morning Ball) — 실데이터 연동 완료판
+
+매일 아침 LG 트윈스 · SSG 랜더스 브리핑 대시보드. 라이브: 사용자의 Netlify 사이트.
+
+## 폴더 구조
+```
+deploy/
+├── index.html                       # 대시보드 (내장 샘플 = 최후 폴백)
+├── data.json.seed                   # 최초 1회 시드
+├── package.json                     # @netlify/blobs 의존성
+├── netlify.toml                     # 배포·배치 스케줄
+└── netlify/functions/
+    ├── _lib.mjs                     # 서버측 검증기 + KST 유틸
+    ├── _batches.mjs                 # 배치 오케스트레이션 (조립·격리·검증·저장)
+    ├── collectors/naver.mjs         # 일정·선발·프리뷰 라인업·상대전적
+    ├── collectors/kbo.mjs           # KBO 공식 순위표 (최근10·연속·추이)
+    ├── collectors/weather.mjs       # 기상청 예보 + 에어코리아 → 진행 가능성
+    ├── collectors/news.mjs          # 네이버 뉴스 검색 (전날 00시~현재)
+    ├── batch1-starters.mjs          # [예약] 당일 0시 KST
+    ├── batch2-lineup.mjs            # [예약] 30분 폴링 → 시작 90분 전 실행
+    ├── run-batch.mjs                # [수동] 배치 즉시 실행 (테스트/긴급)
+    ├── seed.mjs                     # [수동] 최초 1회 시드 적재
+    └── data.mjs                     # GET /data.json 응답
+```
+
+## 셋업 체크리스트 (순서대로)
+1. **API 키 발급 (2곳)**
+   - 공공데이터포털(data.go.kr): 「기상청_단기예보 조회서비스」·「한국환경공단_에어코리아_대기오염정보」 활용신청 → 인증키 1개로 둘 다 사용 → `WEATHER_KEY`
+   - 네이버 개발자센터(developers.naver.com): 애플리케이션 등록 → 검색 API 사용 → `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`
+2. **Netlify 환경변수 등록** — Site configuration → Environment variables:
+   `WEATHER_KEY`, `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`, `ADMIN_KEY`(직접 만든 긴 비밀 문자열)
+3. **재배포** — 이 폴더를 Git 저장소로 연결(예약 함수는 Git 연동/CLI 배포에서만 동작, 드래그&드롭 불가)
+4. **시드 적재 (최초 1회)** — 브라우저에서 `https://<사이트>/.netlify/functions/seed?key=<ADMIN_KEY>`
+5. **수동 테스트**
+   - `.../run-batch?which=1&key=<ADMIN_KEY>` → 응답의 sources에서 소스별 ok/실패 확인
+   - `.../run-batch?which=2&key=<ADMIN_KEY>&force=1` → 라인업 강제 갱신 테스트
+   - 사이트 새로고침 → 상단 칩이 `LIVE DATA · 1배치 ✓`로 바뀌면 성공
+
+## 배치 동작 (KST)
+| 배치 | 시각 | 내용 |
+|---|---|---|
+| 1배치 | 매일 00:00 | 오늘 경기·선발투수·진행가능성(기상/미세먼지)·상대전적·순위·record·승리확률·뉴스 |
+| 2배치 | 경기 시작 −90분 | 확정 라인업 9인 + 선수별 시즌/선발 상대 기록 (30분 폴링, 미발표 시 다음 주기 재시도) |
+
+## 데이터 무결성 (절대 오류 금지 설계)
+- **소스별 격리**: 수집기 하나가 실패해도 그 영역만 이전 정상값 유지, 나머지는 반영. 실패 내역은 `meta.sources`에 기록되어 run-batch 응답/함수 로그로 확인.
+- **저장 전 검증**: 조립본이 스키마 검증 실패 시 저장 자체가 차단.
+- **프런트 재검증 + 내장 폴백**: 화면은 언제나 정상 렌더링.
+- **정직한 표기**: 입력 데이터가 없는 지표는 값을 지어내지 않고 "—"로 표기.
+
+## 세이버 지표 자체 계산 (collectors/compute.mjs)
+스탯티즈 없이, 네이버 프리뷰의 카운팅 기록 + KBO 공식 팀 기록(리그 상수)만으로 아래를 매일 계산:
+- 타자: BB% · K% · ISO · BABIP · wOBA · **wRC+*(파크팩터 미보정, * 표기)** · RC27 · GPA · BB/K · PSN(파워-스피드) · AB/HR · SecA
+- 투수: K/9 · BB/9 · HR/9 · **FIP**(리그 상수 기반) · K% · BB% · **kwERA** · K-BB% · K/BB · LOB%
+- 리그 상수(lgwOBA·R/PA·cFIP)는 KBO 공식 팀 타자(Basic1+Basic2)·팀 투수 페이지 합산으로 매일 산출
+- 트래킹 계열(Barrel%·구속·회전수 등)은 KBO 비공개라 **대시보드에서 제외**했고, WAR·WPA·파크보정 wRC+가 필요해지면 스탯티즈 수집기를 추가하는 확장 지점만 남겨둠
+
+## 소스 및 주의
+- 일정·선발·라인업: 네이버 스포츠 비공식 JSON API — 필드명 변경 가능성에 대비해 후보키 순차 탐색으로 구현. 구조 변경 시 해당 소스만 keep-prev로 격리되며 로그로 감지됨.
+- 순위: KBO 공식 홈페이지(서버 렌더링 표) 파싱. 추이 스파크라인은 일별 승률을 8포인트 롤링 적재.
+- 진행 가능성: 강수확률(경기 시간대 최대)·기온·PM10을 점수화. 개별 리스크가 '높음'이면 판정을 자동 강등.
