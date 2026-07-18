@@ -107,7 +107,7 @@ export async function runBatch1() {
       const gameHour = parseInt(hhmm.slice(0, 2), 10) || 18;
       const wKey = `${loc.nx},${loc.ny}|${gameHour}`;
       if (!(wKey in weatherCache)) {
-        const [fc, air] = await Promise.allSettled([getForecast(loc, gameHour, todayCompact), getAir(loc.station)]);
+        const [fc, air] = await Promise.allSettled([getForecast(loc, gameHour, todayCompact), getAir(loc)]);
         weatherCache[wKey] = {
           built: buildPlayable(fc.status === "fulfilled" ? fc.value : null, air.status === "fulfilled" ? air.value : null),
           log: (fc.status === "fulfilled" ? "kma ok" : "kma FAIL") + " / " + (air.status === "fulfilled" ? "air ok" : "air FAIL")
