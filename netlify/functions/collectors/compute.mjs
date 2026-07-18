@@ -15,8 +15,13 @@ export function ipToNum(ip) {
   const n = nn(ip);
   if (n == null) return null;
   const whole = Math.floor(n);
-  const frac = Math.round((n - whole) * 10);
-  return whole + (frac === 1 ? 1 / 3 : frac === 2 ? 2 / 3 : 0);
+  const dec = n - whole;
+  // KBO 표기 x.1=1/3, x.2=2/3 (소수 첫째자리가 1 또는 2인 경우)
+  const d1 = Math.round(dec * 10);
+  if (Math.abs(dec * 10 - d1) < 1e-9 && (d1 === 1 || d1 === 2))
+    return whole + d1 / 3;
+  // 그 외는 이미 실수 이닝(역산값 등)으로 간주
+  return n;
 }
 
 /* ── 리그 상수 (KBO 팀 기록 합산에서 산출) ── */

@@ -39,8 +39,11 @@ export async function getForecast({ nx, ny }, gameHour, kstDateCompact /* YYYYMM
   if (!key) throw new Error("WEATHER_KEY 미설정");
   const url = `${KMA}?serviceKey=${encodeURIComponent(key)}&numOfRows=400&pageNo=1&dataType=JSON&base_date=${kstDateCompact}&base_time=0200&nx=${nx}&ny=${ny}`;
   const j = await getJson(url);
+  const header = j?.response?.header;
+  if (header && header.resultCode && header.resultCode !== "00")
+    throw new Error("기상청 " + header.resultCode + ":" + (header.resultMsg || "")); /* 예: 30(키 미등록), 03(데이터없음) */
   const items = j?.response?.body?.items?.item;
-  if (!Array.isArray(items)) throw new Error("기상청 응답 구조 이상: " + (j?.response?.header?.resultMsg || "unknown"));
+  if (!Array.isArray(items)) throw new Error("기상청 응답 구조 이상: " + (header?.resultMsg || "unknown"));
   const hours = [];
   for (let h = gameHour - 1; h <= gameHour + 3; h++) hours.push(String(Math.max(0, Math.min(23, h))).padStart(2, "0") + "00");
   const inWin = it => it.fcstDate === kstDateCompact && hours.includes(it.fcstTime);
@@ -60,6 +63,9 @@ export async function getAir(station) {
   if (!key) throw new Error("WEATHER_KEY 미설정");
   const url = `${AIR}?serviceKey=${encodeURIComponent(key)}&returnType=json&numOfRows=1&pageNo=1&stationName=${encodeURIComponent(station)}&dataTerm=DAILY&ver=1.3`;
   const j = await getJson(url);
+  const header = j?.response?.header;
+  if (header && header.resultCode && header.resultCode !== "00")
+    throw new Error("에어코리아 " + header.resultCode + ":" + (header.resultMsg || ""));
   const it = j?.response?.body?.items?.[0];
   if (!it) throw new Error("에어코리아 응답 없음");
   const pm10 = Number(it.pm10Value);

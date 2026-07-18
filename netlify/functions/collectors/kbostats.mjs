@@ -32,15 +32,28 @@ const sum = (rows, col) => {
   const vals = rows.map(r => Number(r[col])).filter(Number.isFinite);
   return vals.length === rows.length && rows.length > 0 ? vals.reduce((a, b) => a + b, 0) : null;
 };
-/* IP는 "1234.1" 표기 — 합산 시 아웃 단위로 변환 */
+/* IP 합산: 컬럼명(IP/이닝/INN…) 자동 탐색, "1234.1"/"1234 1/3"/"1234" 표기 모두 처리 */
+const IP_KEYS = ["IP", "이닝", "INN", "inning", "이닝수"];
+function ipKey(rows) {
+  const head = rows[0] || {};
+  return IP_KEYS.find(k => k in head) || null;
+}
 const sumIP = rows => {
+  const key = ipKey(rows);
+  if (!key) return null;
   let outs = 0;
   for (const r of rows) {
-    const m = /^(\d+)(?:\.(\d))?$/.exec(r["IP"] || "");
-    if (!m) return null;
-    outs += (+m[1]) * 3 + (+(m[2] || 0));
+    const raw = String(r[key] ?? "").trim();
+    // "109.1" / "109.2" (KBO 관행: .1=1/3, .2=2/3) 또는 "109 1/3" 또는 정수
+    let m = /^(\d+)\.([012])$/.exec(raw);
+    if (m) { outs += (+m[1]) * 3 + (+m[2]); continue; }
+    m = /^(\d+)\s+([12])\/3$/.exec(raw);
+    if (m) { outs += (+m[1]) * 3 + (+m[2]); continue; }
+    m = /^(\d+)$/.exec(raw);
+    if (m) { outs += (+m[1]) * 3; continue; }
+    return null; // 알 수 없는 형식 → null로 폴백
   }
-  return Math.floor(outs / 3) + (outs % 3) / 10; /* 다시 x.1/x.2 표기 */
+  return Math.floor(outs / 3) + (outs % 3) / 10;
 };
 
 export async function getLeagueConstants() {
@@ -53,8 +66,23 @@ export async function getLeagueConstants() {
     H2: sum(bat, "2B"), H3: sum(bat, "3B"), HR: sum(bat, "HR"), SF: sum(bat, "SF") ?? sum(bat2, "SF"),
     BB: sum(bat2, "BB"), IBB: sum(bat2, "IBB"), HBP: sum(bat2, "HBP"), SO: sum(bat2, "SO")
   };
-  const P = { IP: sumIP(pit), ER: sum(pit, "ER"), HR: sum(pit, "HR"), BB: sum(pit, "BB"), HBP: sum(pit, "HBP"), SO: sum(pit, "SO") };
-  const lg = leagueConstants(B, P);
+  let ip = sumIP(pit);
+  const ER = sum(pit, "ER");
+  // IP 파싱 실패 시: 팀 ERA와 ER로 총이닝 역산 (IP = ER*9 / ERA)
+  if (ip == null && ER != null) {
+    const eraKey = ["ERA", "방어율", "평균자책", "평균자책점"].find(k => k in (pit[0] || {}));
+    if (eraKey) {
+      let ipSum = 0, okAll = true;
+      for (const r of pit) {
+        const era = Number(r[eraKey]), er = Number(r["ER"]);
+        if (!(era > 0) || !Number.isFinite(er)) { okAll = false; break; }
+        ipSum += er * 9 / era;
+      }
+      if (okAll) ip = ipSum;
+    }
+  }
+  const P = { IP: ip, ER, HR: sum(pit, "HR"), BB: sum(pit, "BB"), HBP: sum(pit, "HBP"), SO: sum(pit, "SO") };
+  const lg = leagueConstants(P.IP == null ? null : B, P);
   if (lg.lgWOBA == null || lg.lgRPA == null || lg.cFIP == null)
     throw new Error("리그 상수 산출 실패 — 필요 컬럼 누락: " + JSON.stringify({ B, P }));
   return lg;

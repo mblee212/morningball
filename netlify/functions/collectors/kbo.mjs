@@ -2,7 +2,7 @@
    www.koreabaseball.com/TeamRank/TeamRank.aspx
    컬럼: 순위·팀·경기·승·패·무·승률·게임차·최근10경기·연속 */
 
-const RANK_URL = "https://www.koreabaseball.com/TeamRank/TeamRank.aspx";
+const RANK_URL = "https://www.koreabaseball.com/Record/TeamRank/TeamRankDaily.aspx";
 const TEAMKEY = { "LG": "lg", "두산": "ob", "SSG": "ssg", "KIA": "kia", "삼성": "ss",
   "KT": "kt", "NC": "nc", "롯데": "lt", "한화": "hh", "키움": "wo" };
 const HOMECITY = { "LG": "잠실", "두산": "잠실", "SSG": "인천", "KIA": "광주", "삼성": "대구",
@@ -21,20 +21,27 @@ export async function getStandings(prevStandings) {
     html = await r.text();
   } finally { clearTimeout(t); }
 
-  /* 테이블 행 파싱: <tr><td>순위</td><td>팀명</td><td>경기</td><td>승</td><td>패</td><td>무</td><td>승률</td><td>게임차</td>...<td>최근10</td><td>연속</td> */
-  const rows = [...html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)]
-    .map(m => [...m[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map(c => c[1].replace(/<[^>]+>/g, "").trim()))
-    .filter(cells => cells.length >= 8 && /^\d+$/.test(cells[0]));
+  /* 페이지에 표가 여러 개(순위표·팀간승패표·홈방문표). 순위표만 정확히 집는다.
+     순위표 행 형태: [순위(1~10), 팀명, 경기, 승, 패, 무, 승률(0.xxx), 게임차, 최근10(x승x무x패), 연속, 홈, 방문]
+     - 팀간승패표는 첫 칸이 팀명(숫자 아님) → 자동 배제
+     - 홈/방문표도 규격이 달라 배제됨 */
+  const allRows = [...html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)]
+    .map(m => [...m[1].matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/g)].map(c => c[1].replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").trim()));
+  const rows = allRows.filter(cells =>
+    cells.length >= 10 &&
+    /^([1-9]|10)$/.test(cells[0]) &&            /* 1~10 순위 */
+    /^0\.\d{3}$/.test(cells[6] || "") &&        /* 7번째 칸이 승률(0.xxx) */
+    /\d+승\d+무\d+패/.test(cells[8] || "")       /* 9번째 칸이 최근10경기 */
+  );
   if (rows.length !== 10) throw new Error(`순위 행 ${rows.length}개 — 페이지 구조 변경 의심`);
 
   return rows.map(c => {
     const rk = +c[0], team = c[1];
     const w = +c[3], l = +c[4], d = +c[5];
     const pct = c[6].startsWith("0") ? c[6].slice(1) : c[6];
-    const gb = c[7] === "0.0" || c[7] === "0" ? "—" : c[7];
-    /* 최근10경기 "7승0무3패" / 연속 "3승" 형태 */
-    const r10 = c.find(v => /\d+승\d+무\d+패/.test(v)) || "";
-    const stk = c.find((v, i) => i > 7 && /^\d+(승|패)$/.test(v)) || "—";
+    const gb = (c[7] === "0.0" || c[7] === "0" || c[7] === "-") ? "—" : c[7];
+    const r10 = c[8] || "";                       /* "7승0무3패" */
+    const stk = /^\d+(승|패)$/.test(c[9] || "") ? c[9] : "—";  /* "3승" */
     const ten = tenFromSummary(r10);
     const key = Object.keys(TEAMKEY).find(k => team.includes(k));
     /* 추이: 이전 trend에 오늘 승률을 이어붙여 최근 8포인트 유지 */
