@@ -178,9 +178,13 @@ export async function getPlayerRecord(playerCode) {
   const parse = s => { try { return typeof s === "string" ? JSON.parse(s) : s; } catch { return null; } };
   const rec = parse(r.record);
   const season = rec?.season?.find(s => String(s.gyear) === String(r.year || "2026")) || null;
-  const vs = parse(r.vsTeam)?.vsteam || null;
+  const vsParsed = parse(r.vsTeam);
+  const vs = vsParsed?.vsteam || null;
   const basic = parse(r.basicRecord)?.basic || null;
-  return { season, vs, basic };
+  const chart = parse(r.chart) || null;
+  const playerType = r.playerType || null;
+  /* 타자용(vs)과 투수용(record.vsTeam/chart) 모두 제공 */
+  return { season, vs, basic, chart, playerType, record: { vsTeam: vsParsed } };
 }
 
 /* 시즌 카운팅 + 네이버 제공 세이버 지표 → 타자 스키마 한 명분.
@@ -241,4 +245,75 @@ export function mapBatterRecord(base, rec, oppNaver) {
     radar,
     note: `${base.hitType || ""} · 등번호 ${base.backnum || "—"} — WAR ${adv.WAR} · wRC+ ${key.wRCp} (네이버 제공)`
   };
+}
+
+/* 투수 개인 기록 → 투수 카드 (불펜/선발 공용).
+   season(2026)에 era·w·l·sv·hold·k9·bb9·kbb·kp·bbp·war·wpa·qs·whip 등 완비.
+   chart.pit_kind.player에 구종 구사율. */
+export function mapPitcherRecord(base, recRaw, oppNaver) {
+  const parse = s => { try { return typeof s === "string" ? JSON.parse(s) : s; } catch { return null; } };
+  const rec = recRaw?.record ? recRaw : { record: parse(recRaw?.recordStr), chart: parse(recRaw?.chartStr), vsTeam: parse(recRaw?.vsTeamStr) };
+  const season = recRaw?.season || null;
+  if (!season) return null;
+  const ipStr = str(season.inn, "—");
+  const fip = (() => {
+    const ip = (() => { const m = /^(\d+)(?:\s+([12])\/3)?$/.exec(String(season.inn).trim()); return m ? (+m[1]) + (m[2] ? (+m[2]) / 3 : 0) : num(season.inn); })();
+    if (!ip || ip <= 0) return "—";
+    const f = ((13 * (num(season.hr) || 0)) + 3 * ((num(season.bb) || 0) + (num(season.hp) || 0)) - 2 * (num(season.kk) || 0)) / ip + 3.10;
+    return f.toFixed(2);
+  })();
+  const key = { ERA: s2(season.era), WHIP: s2(season.whip), "K/9": num(season.k9) != null ? Number(season.k9).toFixed(2) : "—" };
+  const havg = (num(season.hit) != null && num(season.bf) != null && num(season.bf) > 0)
+    ? s3(season.hit / (season.bf - (num(season.bb) || 0) - (num(season.hp) || 0) || season.bf)) : "—";
+  const role = (num(season.sv) || 0) >= (num(season.hold) || 0) && (num(season.sv) || 0) > 0 ? "SV" : "HLD";
+  const detail = {
+    FIP: fip, "BB/9": num(season.bb9) != null ? Number(season.bb9).toFixed(2) : "—",
+    "HR/9": (() => { const ip = num(season.inn2) ? season.inn2 / 3 : null; return ip ? (season.hr * 9 / ip).toFixed(2) : "—"; })(),
+    [role]: str(role === "SV" ? season.sv : season.hold),
+    "피안타율": havg, "이닝": ipStr, "K%": num(season.kp) != null ? season.kp + "%" : "—"
+  };
+  const adv = {
+    kwERA: "—", "K-BB%": (num(season.kp) != null && num(season.bbp) != null) ? (season.kp - season.bbp).toFixed(1) + "%" : "—",
+    "K/BB": num(season.kbb) != null ? Number(season.kbb).toFixed(2) : "—",
+    "LOB%": "—", WAR: num(season.war) != null ? Number(season.war).toFixed(2) : "—", WPA: num(season.wpa) != null ? Number(season.wpa).toFixed(2) : "—"
+  };
+  /* 상대팀 성적 */
+  let vsKey = { ERA: "—", WHIP: "—", "K/9": "—" };
+  const vsArr = rec.vsTeam?.vsteam;
+  if (Array.isArray(vsArr) && oppNaver) {
+    const v = vsArr.find(x => x.team === oppNaver);
+    if (v) vsKey = { ERA: s2(v.era), WHIP: s2(v.whip), "K/9": "—" };
+  }
+  /* 구종 */
+  const KMAP = { fast: ["직구", "#7FD1A7"], twos: ["투심", "#8FD17F"], cutt: ["커터", "#E07A6B"], slid: ["슬라이더", "#E8A06B"], swee: ["스위퍼", "#E8C067"], curv: ["커브", "#8FB7E8"], chup: ["체인지업", "#C79BE8"], fork: ["포크", "#6BB0E8"], sink: ["싱커", "#9BD1B0"], spli: ["스플리터", "#B0A0E8"], kunc: ["너클", "#A0A0A0"], slur: ["슬러브", "#D08FB0"] };
+  const pk = rec.chart?.pit_kind?.player;
+  let mix = null;
+  if (pk) {
+    mix = Object.entries(pk).filter(([, v]) => num(v.pit_rt) != null && v.pit_rt > 0)
+      .sort((a, b) => b[1].pit_rt - a[1].pit_rt)
+      .map(([k, v]) => { const m = KMAP[k] || [v.pit || k, "#8A9A93"]; return [`${m[0]} ${Math.round(v.pit_rt)}%${num(v.speed) ? ` (${Math.round(v.speed)})` : ""}`, Math.round(v.pit_rt), m[1]]; });
+    const sum = mix.reduce((a, m) => a + m[1], 0);
+    if (sum < 100 && sum > 0) mix.push(["기타", 100 - sum, "#3E4E48"]);
+  }
+  return {
+    name: base.name, hand: str(base.hitType, "").includes("좌") ? "좌완" : "우완",
+    role: base.role || (role === "SV" ? "마무리" : "계투"),
+    key, vsKey, detail,
+    vsDetail: Object.fromEntries(Object.keys(detail).map(k => [k, "—"])),
+    adv, vsAdv: Object.fromEntries(Object.keys(adv).map(k => [k, "—"])),
+    mix: mix && mix.length ? mix : [["구종 데이터 미제공", 100, "#3E4E48"]],
+    note: `${str(season.w)}승 ${str(season.l)}패 ${(num(season.sv) || 0) > 0 ? season.sv + "세이브 " : ""}${(num(season.hold) || 0) > 0 ? season.hold + "홀드 " : ""}· WAR ${adv.WAR} (네이버 제공)`
+  };
+}
+
+/* pitcherBullpen[] → 불펜 투수 기본 정보 목록 (playerCode로 이후 개별 조회) */
+export function mapBullpenList(lineup) {
+  const bp = lineup?.pitcherBullpen;
+  if (!Array.isArray(bp)) return null;
+  return bp.map(p => ({
+    name: str(p.playerName, null),
+    playerCode: str(p.playerCode, null),
+    hitType: str(p.hitType, ""),
+    role: "계투"
+  })).filter(p => p.name && p.playerCode);
 }

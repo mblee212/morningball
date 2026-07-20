@@ -4,7 +4,7 @@
    원칙 3: 최종 조립본이 스키마 검증을 통과해야만 저장 */
 import { getStore } from "@netlify/blobs";
 import { validateData, kstStamp, kstToday, kstNow } from "./_lib.mjs";
-import { TEAMCODE, NAVER2CODE, getGames, findGame, isHome, getPreview, getPlayerRecord, num, str, s2, starterLine, mapStarter, mapLineup, mapBatterRecord, standingStr, h2hFromPreview, recentFromPreview } from "./collectors/naver.mjs";
+import { TEAMCODE, NAVER2CODE, getGames, findGame, isHome, getPreview, getPlayerRecord, num, str, s2, starterLine, mapStarter, mapLineup, mapBatterRecord, mapPitcherRecord, mapBullpenList, standingStr, h2hFromPreview, recentFromPreview } from "./collectors/naver.mjs";
 import { getStandings } from "./collectors/kbo.mjs";
 import { stadiumInfo, getForecast, getAir, buildPlayable } from "./collectors/weather.mjs";
 import { getNews } from "./collectors/news.mjs";
@@ -213,6 +213,34 @@ export async function runBatch2({ force = false } = {}) {
       }
       fresh.teams[teamKey].batters = batters;
       const filledCount = batters.filter(b => b.key.AVG !== "—").length;
+
+      /* 불펜 투수: 오늘 엔트리 명단(pitcherBullpen)의 전원으로 교체.
+         부상/말소자는 명단에 없어 자동 제외. 개별 실패는 그 투수만 이름 유지.
+         전원 조회하되 5명씩 병렬 묶음으로 처리해 지연 최소화. */
+      try {
+        const bpBase = mapBullpenList(lineup);
+        if (bpBase && bpBase.length) {
+          const emptyCard = b => ({ name: b.name, hand: str(b.hitType, "").includes("좌") ? "좌완" : "우완", role: "계투", key: { ERA: "—", WHIP: "—", "K/9": "—" }, vsKey: { ERA: "—", WHIP: "—", "K/9": "—" }, detail: { FIP: "—", "BB/9": "—", "HR/9": "—", HLD: "—", "피안타율": "—", "이닝": "—", "K%": "—" }, vsDetail: { FIP: "—", "BB/9": "—", "HR/9": "—", HLD: "—", "피안타율": "—", "이닝": "—", "K%": "—" }, adv: { kwERA: "—", "K-BB%": "—", "K/BB": "—", "LOB%": "—" }, vsAdv: { kwERA: "—", "K-BB%": "—", "K/BB": "—", "LOB%": "—" }, note: "오늘 엔트리 등록 불펜" });
+          const bullpen = [];
+          for (let i = 0; i < bpBase.length; i += 5) {
+            const chunk = bpBase.slice(i, i + 5);
+            const cards = await Promise.all(chunk.map(async b => {
+              try {
+                const rec = await getPlayerRecord(b.playerCode);
+                const m = rec ? mapPitcherRecord(b, rec, oppNaver) : null;
+                if (m) { const { mix, ...rest } = m; return rest; } /* 불펜 카드엔 mix 미표시 */
+              } catch { /* 개별 실패는 무시 */ }
+              return emptyCard(b);
+            }));
+            bullpen.push(...cards);
+          }
+          if (bullpen.length) {
+            fresh.teams[teamKey].pitchers.bullpen = bullpen;
+            sources[`bullpen_${teamKey}`] = `ok (${bullpen.length}명, 지표 ${bullpen.filter(x => x.key.ERA !== "—").length})`;
+          }
+        }
+      } catch (e) { sources[`bullpen_${teamKey}`] = "keep-prev: " + e.message; }
+
       updatedAny = true;
       sources[`lineup_${teamKey}`] = `ok (지표 ${filledCount}/9)`;
     } catch (e) { sources[`lineup_${teamKey}`] = "keep-prev: " + e.message; }
