@@ -1,0 +1,25 @@
+# 모닝볼 — Netlify 배포 설정
+[build]
+  publish = "."
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# 프런트는 항상 ./data.json 을 읽는다 → 함수가 최신 배치 데이터로 응답
+[[redirects]]
+  from = "/data.json"
+  to = "/.netlify/functions/data"
+  status = 200
+
+# ── 배치 스케줄 (cron은 UTC 기준 · KST = UTC+9) ──
+# 1배치: 경기 당일 0시(KST) 선발투수/경기정보 확정 → 전일 15:00 UTC
+[functions."batch1-starters"]
+  schedule = "0 15 * * *"
+
+# 2배치: 라인업은 경기 시작 90분 전 확정.
+# KBO 시작 시각이 요일·시즌마다 달라(14:00/17:00/18:30) 고정 cron이 불가능하므로
+# 30분 간격으로 깨어나 "지금이 경기 시작 90분 전인가"를 함수 내부에서 판정 후 갱신.
+# UTC 03:00~09:30 = KST 12:00~18:30 (모든 경기 시각의 -90분 지점을 커버)
+[functions."batch2-lineup"]
+  schedule = "*/30 3-9 * * *"
