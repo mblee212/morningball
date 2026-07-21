@@ -95,6 +95,7 @@ export async function getAir(loc) {
 export function buildPlayable(fc, air) {
   const risks = [];
   let score = 100;
+  const hasWeatherData = (fc?.pop != null) || (fc?.tmp != null) || (air?.pm10 != null);
 
   if (fc?.pop != null) {
     score -= Math.round(fc.pop * 0.7);
@@ -120,8 +121,12 @@ export function buildPlayable(fc, air) {
 
   risks.push({ ico: "🏟️", t: "구장 일정", d: "KBO 공식 일정 기준 정상 편성 — 특이 행사 없음", lv: "good", lvt: "이상 없음" });
 
+  /* 날씨 데이터를 하나도 못 받았으면 100%가 아니라 '미확정'으로 표기 (오해 방지) */
+  if (!hasWeatherData) {
+    return { playable: null, verdict: "기상 정보 미수신 — 확인 필요", risks };
+  }
+
   score = Math.max(0, Math.min(100, score));
-  /* 개별 리스크가 '높음/경계'면 점수와 무관하게 판정을 한 단계 낮춘다 */
   const hasBad = risks.some(r => r.lv === "bad");
   const verdict = (score >= 75 && !hasBad) ? "정상 진행 유력"
                 : (score >= 50) ? "기상 변수 주시"

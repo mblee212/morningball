@@ -66,47 +66,63 @@ export async function runBatch1() {
     T.game.venue = `구장 확인 중 (${myHome ? "홈" : "원정"})`;
 
     /* 프리뷰 (같은 경기 상대팀과 공유): 선발·구장·상대전적·record 확정 */
+    let pv = null;
     try {
       if (!(game.gameId in previewCache)) previewCache[game.gameId] = await getPreview(game.gameId);
-      const pv = previewCache[game.gameId];
+      pv = previewCache[game.gameId];
       if (!pv) throw new Error("preview 없음");
-
-      /* 구장: gameInfo.stadium */
-      const stadium = str(pv.gameInfo?.stadium, "");
-      if (stadium) T.game.venue = `${stadium} (${myHome ? "홈" : "원정"})`;
-
-      /* 선발: playerInfo.name — 우리팀=홈이면 homeStarter */
-      const myStarter = myHome ? pv.homeStarter : pv.awayStarter;
-      const opStarter = myHome ? pv.awayStarter : pv.homeStarter;
-      const mySP = mapStarter(myStarter, lg);
-      if (!mySP) throw new Error("선발 파싱 실패");
-      T.game.homeSP = mySP.name;
-      T.game.homeSPline = starterLine(myStarter);
-      T.game.awaySP = str(opStarter?.playerInfo?.name, "—");
-      T.game.awaySPline = starterLine(opStarter);
-      T.pitchers.starter = { ...T.pitchers.starter, ...mySP, note: `${oppName} 상대 등판 — 지표는 시즌 기록 기반 자체 계산` };
-
-      /* record & 상대 record: homeStandings/awayStandings */
-      const myStd = myHome ? pv.homeStandings : pv.awayStandings;
-      const opStd = myHome ? pv.awayStandings : pv.homeStandings;
-      const myRec = standingStr(myStd), opRec = standingStr(opStd);
-      if (myRec) T.record = myRec;
-      if (opRec) T.game.oppRec = opRec;
-
-      /* 상대전적: seasonVsResult + 최근5경기 */
-      const h = h2hFromPreview(pv, code);
-      const recent = recentFromPreview(myHome ? pv.homeTeamPreviousGames : pv.awayTeamPreviousGames, code);
-      if (h) {
-        T.h2h.my = fresh.teams[teamKey].short;
-        T.h2h.op = T.game.oppShort;
-        T.h2h.w = h.w; T.h2h.l = h.l; T.h2h.d = h.d;
-        if (recent) T.h2h.recent = recent;
-        T.h2h.notes = [`시즌 상대전적 ${h.w}승 ${h.d}무 ${h.l}패`].concat(recent ? [`최근 5경기 ${recent.join(" ")}`] : []);
-        sources[`h2h_${teamKey}`] = "ok";
-      } else sources[`h2h_${teamKey}`] = "상대전적 미제공 — 이전 유지";
-
       sources[`preview_${teamKey}`] = "ok";
     } catch (e) { sources[`preview_${teamKey}`] = "keep-prev: " + e.message; }
+
+    /* 구장 (독립) */
+    if (pv) {
+      const stadium = str(pv.gameInfo?.stadium, "");
+      if (stadium) T.game.venue = `${stadium} (${myHome ? "홈" : "원정"})`;
+    }
+
+    /* 선발명 (독립 — 지표 계산이 실패해도 이름은 반드시 채움) */
+    if (pv) {
+      try {
+        const myStarter = myHome ? pv.homeStarter : pv.awayStarter;
+        const opStarter = myHome ? pv.awayStarter : pv.homeStarter;
+        const myName = str(myStarter?.playerInfo?.name, null);
+        const opName = str(opStarter?.playerInfo?.name, null);
+        if (myName) { T.game.homeSP = myName; T.game.homeSPline = starterLine(myStarter); }
+        if (opName) { T.game.awaySP = opName; T.game.awaySPline = starterLine(opStarter); }
+        /* 선발 카드(지표)는 별도 try — 실패해도 위 이름은 유지됨 */
+        try {
+          const mySP = mapStarter(myStarter, lg);
+          if (mySP) T.pitchers.starter = { ...T.pitchers.starter, ...mySP, note: `${oppName} 상대 등판 — 지표는 시즌 기록 기반 자체 계산` };
+        } catch { /* 카드 계산 실패 — 이름/라인은 이미 채워짐 */ }
+        sources[`starter_${teamKey}`] = myName ? "ok" : "이름 없음";
+      } catch (e) { sources[`starter_${teamKey}`] = "keep-prev: " + e.message; }
+    }
+
+    /* record & 상대 record (독립) */
+    if (pv) {
+      try {
+        const myRec = standingStr(myHome ? pv.homeStandings : pv.awayStandings);
+        const opRec = standingStr(myHome ? pv.awayStandings : pv.homeStandings);
+        if (myRec) T.record = myRec;
+        if (opRec) T.game.oppRec = opRec;
+      } catch { /* record 실패 — 순위표(deriveFromStandings)가 이후 보정 */ }
+    }
+
+    /* 상대전적 (독립 — 조회 팀 code 기준) */
+    if (pv) {
+      try {
+        const h = h2hFromPreview(pv, code);
+        const recent = recentFromPreview(myHome ? pv.homeTeamPreviousGames : pv.awayTeamPreviousGames, code);
+        if (h) {
+          T.h2h.my = fresh.teams[teamKey].short;
+          T.h2h.op = T.game.oppShort;
+          T.h2h.w = h.w; T.h2h.l = h.l; T.h2h.d = h.d;
+          if (recent) T.h2h.recent = recent;
+          T.h2h.notes = [`시즌 상대전적 ${h.w}승 ${h.d}무 ${h.l}패`].concat(recent ? [`최근 5경기 ${recent.join(" ")}`] : []);
+          sources[`h2h_${teamKey}`] = "ok";
+        } else sources[`h2h_${teamKey}`] = "상대전적 미제공 — 이전 유지";
+      } catch (e) { sources[`h2h_${teamKey}`] = "keep-prev: " + e.message; }
+    }
 
     /* 진행 가능성 (기상청 + 에어코리아) — 구장은 프리뷰에서 확정된 venue 사용 */
     try {
